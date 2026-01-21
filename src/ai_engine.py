@@ -15,7 +15,7 @@ def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
         model = genai.GenerativeModel('gemini-pro')
         
         prompt = f"""
-        You are a {role}.
+        You are {role}, also known as Mars AI.
         Current Crop: {crop_type}
         
         Analyze the following real-time data and provide a specific "Ag-Prescription".
@@ -148,7 +148,7 @@ def analyze_crop_image(image_data):
         model = genai.GenerativeModel('gemini-1.5-flash-latest')
         
         prompt = f"""
-        You are an expert US Agricultural Extension Agent.
+        You are Mars AI, an expert US Agricultural Extension Agent.
         Analyze this image of a crop.
         1. Identify the crop.
         2. Diagnose any disease or deficiency (e.g., fungal, nutrient, pest).

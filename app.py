@@ -11,7 +11,7 @@ from src.db_handler import init_db, get_user_pref, set_user_pref, save_labeled_d
 # Initialize DB
 init_db()
 
-st.set_page_config(page_title="Smart Farm AI", page_icon="🍓", layout="wide")
+st.set_page_config(page_title="Mars AI", page_icon="🪐", layout="wide")
 
 # --- CSS Styling for "Premium" Feel ---
 st.markdown("""
@@ -46,8 +46,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Sidebar ---
-st.sidebar.title("🌱 Farm Controls")
-st.sidebar.caption("Smart Resource Optimizer")
+st.sidebar.title("🪐 Mars AI")
+st.sidebar.caption("Future Farming Solutions")
 
 # 1. Load Saved Settings
 saved_crop = get_user_pref("crop_type", "Strawberries")
@@ -85,7 +85,7 @@ st.sidebar.info(f"💾 Settings Saved: **{selected_crop}**")
 # --- Legal & Disclaimer ---
 with st.sidebar.expander("⚖️ Legal & Privacy", expanded=False):
     st.caption("""
-    **Disclaimer:** This AI tool provides insights for reference only. It is not a substitute for professional agricultural advice. 
+    **Disclaimer:** Mars AI provides insights for reference only. It is not a substitute for professional agricultural advice. 
     We are not liable for crop loss or damages resulting from reliance on these results.
     
     **Data Privacy:** Uploaded images are analyzed by Google Gemini. Verification data helps improve the model.
@@ -94,7 +94,7 @@ with st.sidebar.expander("⚖️ Legal & Privacy", expanded=False):
 # Fetch Data (Real-time based on location)
 weather = fetch_weather_data(lat=selected_coords[0], lon=selected_coords[1])
 
-st.title(f"Smart Farm Monitor: {crop_type}")
+st.title(f"Mars AI: Smart Farm Monitor ({crop_type})")
 st.caption("Powered by Google Gemini 3 • Open-Meteo Weather API")
 
 # --- TABS LAYOUT ---

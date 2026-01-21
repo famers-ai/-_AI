@@ -2,13 +2,13 @@
 
 ## Disclaimer (Liability)
 **Important Notice:**
-The "Smart Farm AI" application employs artificial intelligence (Google Gemini) to provide agricultural insights, crop diagnosis, and pest forecasting. These results are probabilistic estimates based on available data and image analysis.
+The "Mars AI" application employs artificial intelligence (Google Gemini) to provide agricultural insights, crop diagnosis, and pest forecasting. These results are probabilistic estimates based on available data and image analysis.
 
 **1. No Professional Advice:**
 The information provided by this application is for informational purposes only and does not constitute professional agronomic, financial, or legal advice. Users should consult with a certified agricultural expert before making critical decisions regarding crop management, pesticide application, or financial investments.
 
 **2. Limitation of Liability:**
-The developers of Smart Farm AI are not liable for any direct, indirect, incidental, or consequential damages (including, but not limited to, crop loss, financial loss, or data loss) arising from the use of, or inability to use, this application or reliance on its outputs.
+The developers of Mars AI are not liable for any direct, indirect, incidental, or consequential damages (including, but not limited to, crop loss, financial loss, or data loss) arising from the use of, or inability to use, this application or reliance on its outputs.
 
 **3. Accuracy:**
 While we strive for accuracy, weather data (Open-Meteo) and AI analysis (Gemini) may contain errors or inaccuracies.

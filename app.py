@@ -160,8 +160,12 @@ with tab1:
 
     with col_ai:
         st.subheader("🤖 AI Agronomist")
-        with st.spinner("Analyzing environment..."):
-            insight = analyze_situation(weather, crop_type)
+        # AI On-Demand to save quota
+        if st.button("🤖 Analyze Farm Conditions"):
+            with st.spinner("Analyzing..."):
+                insight = analyze_situation(weather, crop_type)
+        else:
+            insight = "Click the button to get AI insights."
         
         st.markdown(f"""
         <div class="ai-card">
@@ -265,8 +269,11 @@ with tab5:
     st.caption("AI-generated performance analysis based on standard data.")
     
     st.markdown("### 📝 AI Agronomist Review")
-    with st.spinner("Generating weekly summary..."):
-         report_text = generate_weekly_report(crop_type)
+    if st.button("📑 Generate Report"):
+        with st.spinner("Generating weekly summary..."):
+             report_text = generate_weekly_report(crop_type)
+    else:
+        report_text = "Click button to generate report."
      
     st.markdown(f"""
     <div class="ai-card">

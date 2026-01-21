@@ -249,7 +249,7 @@ with tab4:
 
 # Footer
 st.markdown("---")
-st.caption("Powered by Gemini 3 • Open-Meteo • Streamlit")
+st.caption("Powered by Gemini 3 • Open-Meteo • Mars AI v1.1")
 
 # --- TAB 5: WEEKLY REPORT ---
 with tab5:

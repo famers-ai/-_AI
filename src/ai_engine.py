@@ -17,7 +17,9 @@ else:
 
 def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
     if not API_KEY:
-        return "⚠️ **Error**: API Key not found. Please set GEMINI_API_KEY in Streamlit Secrets."
+        # Debug info for the user
+        debug_keys = list(st.secrets.keys()) if hasattr(st, "secrets") else "No secrets module"
+        return f"⚠️ **Error**: API Key not found. Debug Info - Available Keys: `{debug_keys}`. Please ensure 'GEMINI_API_KEY' is set in Secrets."
 
     try:
         genai.configure(api_key=API_KEY)
@@ -150,7 +152,8 @@ def analyze_crop_image(image_data):
     Analyzes uploaded crop image for diseases.
     """
     if not API_KEY:
-        return "⚠️ **Error**: API Key not found. Please set GEMINI_API_KEY in Streamlit Secrets."
+        debug_keys = list(st.secrets.keys()) if hasattr(st, "secrets") else "No secrets module"
+        return f"⚠️ **Error**: API Key not found. Debug Info - Available Keys: `{debug_keys}`. Please set GEMINI_API_KEY in Streamlit Secrets."
         
     try:
         genai.configure(api_key=API_KEY)

@@ -26,6 +26,26 @@ def fetch_weather_data(lat=37.7749, lon=-122.4194):
         print(f"Error fetching weather: {e}")
         return {"temperature": 70, "humidity": 55, "rain": 0.0, "wind_speed": 5.0} # Fallback in F
 
+@st.cache_data(ttl=3600)
+def get_coordinates_from_city(city_name):
+    """
+    Searches for a city name and returns (lat, lon, display_name).
+    Uses Open-Meteo Geocoding API (Free, No Key).
+    """
+    try:
+        url = f"https://geocoding-api.open-meteo.com/v1/search?name={city_name}&count=1&language=en&format=json"
+        response = requests.get(url)
+        data = response.json()
+        if "results" in data:
+            result = data["results"][0]
+            lat = result.get("latitude")
+            lon = result.get("longitude")
+            country = result.get("country", "")
+            return lat, lon, f"{result['name']}, {country}"
+    except Exception as e:
+        pass
+    return None, None, None
+
 def calculate_pest_risk(weather_data, crop_type):
     """
     Calculates Pest Risk based on GDD (Growing Degree Days) or humidity/temp.

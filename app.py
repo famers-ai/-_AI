@@ -4,7 +4,7 @@ import plotly.express as px
 import random
 import time
 from PIL import Image
-from src.data_handler import fetch_weather_data, calculate_pest_risk, fetch_market_prices
+from src.data_handler import fetch_weather_data, calculate_pest_risk, fetch_market_prices, get_coordinates_from_city
 from src.ai_engine import analyze_situation, analyze_crop_image, generate_weekly_report
 from src.db_handler import init_db, get_user_pref, set_user_pref, save_labeled_data
 
@@ -68,16 +68,45 @@ except:
 # 2. Controls
 selected_crop = st.sidebar.selectbox("Select Crop", crop_options, index=default_index)
 
-# Location Selector (Legal Defense: Avoid "Misleading Data" liability)
-LOCATIONS = {
-    "California (US)": (36.7783, -119.4179),
-    "New York (US)": (40.7128, -74.0060),
-    "Seoul (KR)": (37.5665, 126.9780),
-    "London (UK)": (51.5074, -0.1278),
-    "Tokyo (JP)": (35.6762, 139.6503),
-}
-selected_loc_name = st.sidebar.selectbox("📍 Farm Location", list(LOCATIONS.keys()), index=0)
-selected_coords = LOCATIONS[selected_loc_name]
+from src.data_handler import fetch_weather_data, calculate_pest_risk, fetch_market_prices, get_coordinates_from_city
+# ... (imports are fine, just ensuring get_coordinates is available, actually I should update import line separately or assume it works if I change usage?)
+# Wait, I need to update the import in app.py. Line 7 imports specific functions. 
+# I will make a larger block replacement including imports if needed, or just update the Sidebar logic and fix imports later.
+# Let's assume I need to update import.
+# Actually, let's just use the function if imported.
+# I will execute 2 replacements: one for import, one for sidebar.
+
+# REPLACEMENT 1: Sidebar Logic
+# Location Selector
+loc_mode = st.sidebar.radio("📍 Farm Location Mode", ["Preset", "Custom Search"])
+
+if loc_mode == "Preset":
+    LOCATIONS = {
+        "California (US)": (36.7783, -119.4179),
+        "New York (US)": (40.7128, -74.0060),
+        "Seoul (KR)": (37.5665, 126.9780),
+        "London (UK)": (51.5074, -0.1278),
+        "Tokyo (JP)": (35.6762, 139.6503),
+        "Amsterdam (NL)": (52.3676, 4.9041),
+        "Sydney (AU)": (-33.8688, 151.2093)
+    }
+    selected_loc_name = st.sidebar.selectbox("Select Region", list(LOCATIONS.keys()), index=0)
+    selected_coords = LOCATIONS[selected_loc_name]
+else:
+    city_query = st.sidebar.text_input("Enter City Name", "Paris")
+    if city_query:
+        lat, lon, name = get_coordinates_from_city(city_query)
+        if lat:
+            selected_coords = (lat, lon)
+            selected_loc_name = name
+            st.sidebar.success(f"Found: {name}")
+        else:
+            st.sidebar.error("City not found")
+            selected_loc_name = "California (US)"
+            selected_coords = (36.7783, -119.4179)
+    else:
+        selected_loc_name = "California (US)"
+        selected_coords = (36.7783, -119.4179)
 
 # 3. Auto-Save Settings
 if selected_crop != saved_crop:

@@ -46,7 +46,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Sidebar ---
-st.sidebar.title("🪐 Mars AI")
+st.sidebar.title("Mars AI")
 st.sidebar.caption("Future Farming Solutions")
 
 # 1. Load Saved Settings

@@ -146,7 +146,7 @@ def analyze_crop_image(image_data):
     Analyzes uploaded crop image for diseases.
     """
     if not API_KEY:
-        return "**Error**: Please add GEMINI_API_KEY to .env to use the AI Crop Doctor."
+        return "⚠️ **Error**: API Key not found. Please set GEMINI_API_KEY in Streamlit Secrets."
         
     try:
         genai.configure(api_key=API_KEY)

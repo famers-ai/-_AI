@@ -6,12 +6,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Priority: Streamlit Secrets (Cloud) > os.getenv (Local .env)
-# Debugging: Print available secrets keys to logs
-if hasattr(st, "secrets"):
-    print(f"DEBUG: Available secrets keys: {list(st.secrets.keys())}")
-
+# Handling user typo: keys found include 'GEMINI_APT_KEY'
 if "GEMINI_API_KEY" in st.secrets:
     API_KEY = st.secrets["GEMINI_API_KEY"]
+elif "GEMINI_APT_KEY" in st.secrets:
+    API_KEY = st.secrets["GEMINI_APT_KEY"]
 else:
     API_KEY = os.getenv("GEMINI_API_KEY")
 

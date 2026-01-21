@@ -13,12 +13,6 @@ init_db()
 
 st.set_page_config(page_title="Mars AI", page_icon="🪐", layout="wide")
 
-# --- DEBUG: CHECK SECRETS ---
-try:
-    st.warning(f"🔑 Debugging Secrets: Found keys = {list(st.secrets.keys())}")
-except Exception as e:
-    st.error(f"❌ Secret Error: {e}")
-
 # --- CSS Styling for "Premium" Feel ---
 st.markdown("""
 <style>

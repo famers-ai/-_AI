@@ -150,7 +150,8 @@ def analyze_crop_image(image_data):
         
     try:
         genai.configure(api_key=API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        # Use stable model version
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""
         You are Mars AI, an expert US Agricultural Extension Agent.
@@ -167,4 +168,4 @@ def analyze_crop_image(image_data):
         response = model.generate_content([prompt, image_data])
         return response.text
     except Exception as e:
-        return f"**Error**: Could not analyze image. (Reason: {e})"
+        return f"⚠️ **AI Error**: {type(e).__name__} - {str(e)}"

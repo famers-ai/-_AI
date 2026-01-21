@@ -86,7 +86,7 @@ if selected_crop != saved_crop:
 
 crop_type = selected_crop # Alias
     
-auto_refresh = st.sidebar.checkbox("Auto-refresh Data", value=True)
+auto_refresh = st.sidebar.checkbox("Auto-refresh Data", value=False)
 st.sidebar.divider()
 st.sidebar.info(f"💾 Settings Saved: **{selected_crop}**")
 

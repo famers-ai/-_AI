@@ -13,6 +13,12 @@ init_db()
 
 st.set_page_config(page_title="Mars AI", page_icon="🪐", layout="wide")
 
+# --- DEBUG: CHECK SECRETS ---
+try:
+    st.warning(f"🔑 Debugging Secrets: Found keys = {list(st.secrets.keys())}")
+except Exception as e:
+    st.error(f"❌ Secret Error: {e}")
+
 # --- CSS Styling for "Premium" Feel ---
 st.markdown("""
 <style>
@@ -249,7 +255,7 @@ with tab4:
 
 # Footer
 st.markdown("---")
-st.caption("Powered by Gemini 3 • Open-Meteo • Mars AI v1.1")
+st.caption("Powered by Gemini 3 • Open-Meteo • Mars AI v1.2")
 
 # --- TAB 5: WEEKLY REPORT ---
 with tab5:

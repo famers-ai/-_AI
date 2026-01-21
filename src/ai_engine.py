@@ -5,15 +5,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Priority: Streamlit Secrets (Cloud) > os.getenv (Local .env)
-# Handling user typo: keys found include 'GEMINI_APT_KEY'
-if "GEMINI_API_KEY" in st.secrets:
-    API_KEY = st.secrets["GEMINI_API_KEY"]
-elif "GEMINI_APT_KEY" in st.secrets:
-    API_KEY = st.secrets["GEMINI_APT_KEY"]
-else:
-    # 로컬 개발용 환경 변수 fallback
-    API_KEY = os.getenv("GEMINI_API_KEY")
+def get_api_key():
+    # Priority: Streamlit Secrets (Cloud) > os.getenv (Local .env)
+    if "GEMINI_API_KEY" in st.secrets:
+        return st.secrets["GEMINI_API_KEY"]
+    elif "GEMINI_APT_KEY" in st.secrets:
+        return st.secrets["GEMINI_APT_KEY"]
+    return os.getenv("GEMINI_API_KEY")
+
+API_KEY = get_api_key() # Keep for backward compatibility if needed, but functions should call get_api_key()
 # Helper to get a valid Gemini model name
 def get_active_model_name():
     """Return a model name that supports generateContent.
@@ -43,14 +43,16 @@ def get_active_model_name():
     return "gemini-pro"
 
 
+@st.cache_data(ttl=600, show_spinner=False)
 def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
-    if not API_KEY:
+    api_key = get_api_key()
+    if not api_key:
         # Debug info for the user
         debug_keys = list(st.secrets.keys()) if hasattr(st, "secrets") else "No secrets module"
         return f"⚠️ **Error**: API Key not found. Debug Info - Available Keys: `{debug_keys}`. Please ensure 'GEMINI_API_KEY' is set in Secrets."
 
     try:
-        genai.configure(api_key=API_KEY)
+        genai.configure(api_key=api_key)
         # Use stable Gemini 1.5 Flash model
         # Use stable Gemini 1.5 Flash model
         model = genai.GenerativeModel(get_active_model_name())
@@ -138,6 +140,7 @@ def analyze_situation(weather, crop_type):
     # 2. AI Reasoning
     return get_gemini_response(context, crop_type, role="US Agricultural Extension Agent")
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def generate_weekly_report(crop_type):
     stats = get_weekly_stats(crop_type)
     if not stats:
@@ -157,14 +160,14 @@ def generate_weekly_report(crop_type):
     Target Moisture: {crop_info.get('soil_moisture_min')} - {crop_info.get('soil_moisture_max')}%
     """
     
-    if not API_KEY:
+    api_key = get_api_key()
+    if not api_key:
         return f"**Weekly Stats**: Avg Temp {stats['avg_temp']}C, Avg Moisture {stats['avg_moisture']}%.\n*(AI Insight unavailable in Simulation Mode)*"
         
     try:
-        genai.configure(api_key=API_KEY)
+        genai.configure(api_key=api_key)
         # Use stable Gemini 1.5 Flash model
-        # Use stable Gemini 1.5 Flash model
-        model = genai.GenerativeModel(get_active_model_name())
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         prompt = f"""
         You are a Farm Manager AI. Write a 'Weekly Farm Report' based on the stats.
@@ -184,12 +187,13 @@ def analyze_crop_image(image_data):
     """
     Analyzes uploaded crop image for diseases.
     """
-    if not API_KEY:
+    api_key = get_api_key()
+    if not api_key:
         debug_keys = list(st.secrets.keys()) if hasattr(st, "secrets") else "No secrets module"
         return f"⚠️ **Error**: API Key not found. Debug Info - Available Keys: `{debug_keys}`. Please set GEMINI_API_KEY in Streamlit Secrets."
         
     try:
-        genai.configure(api_key=API_KEY)
+        genai.configure(api_key=api_key)
         # Use stable model version
         # Use stable model version
         model = genai.GenerativeModel(get_active_model_name())

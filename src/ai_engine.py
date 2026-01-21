@@ -11,8 +11,34 @@ if "GEMINI_API_KEY" in st.secrets:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 elif "GEMINI_APT_KEY" in st.secrets:
     API_KEY = st.secrets["GEMINI_APT_KEY"]
-else:
-    API_KEY = os.getenv("GEMINI_API_KEY")
+# Helper to get a valid Gemini model name
+def get_active_model_name():
+    """Return a model name that supports generateContent.
+    Prioritizes known stable models (gemini-pro, gemini-1.0-pro) and falls back to the first available.
+    """
+    try:
+        models = genai.list_models()
+        # Collect candidates supporting generateContent
+        candidates = []
+        for m in models:
+            if hasattr(m, "supported_generation_methods") and "generateContent" in m.supported_generation_methods:
+                name = m.name
+                if name.startswith("models/"):
+                    name = name.split("/", 1)[1]
+                candidates.append(name)
+        # Preferred list
+        preferred = ["gemini-pro", "gemini-1.0-pro", "gemini-1.5-pro", "gemini-1.5-flash"]
+        for pref in preferred:
+            if pref in candidates:
+                return pref
+        # Fallback to first candidate if any
+        if candidates:
+            return candidates[0]
+    except Exception as e:
+        print(f"Model listing error: {e}")
+    # Final fallback to a known good model name
+    return "gemini-pro"
+
 
 def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
     if not API_KEY:
@@ -24,7 +50,7 @@ def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
         genai.configure(api_key=API_KEY)
         # Use stable Gemini 1.5 Flash model
         # Use stable Gemini 1.5 Flash model
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel(get_active_model_name())
         
         prompt = f"""
         You are {role}, also known as Mars AI.
@@ -135,7 +161,7 @@ def generate_weekly_report(crop_type):
         genai.configure(api_key=API_KEY)
         # Use stable Gemini 1.5 Flash model
         # Use stable Gemini 1.5 Flash model
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel(get_active_model_name())
         
         prompt = f"""
         You are a Farm Manager AI. Write a 'Weekly Farm Report' based on the stats.
@@ -163,7 +189,7 @@ def analyze_crop_image(image_data):
         genai.configure(api_key=API_KEY)
         # Use stable model version
         # Use stable model version
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel(get_active_model_name())
         
         prompt = f"""
         You are Mars AI, an expert US Agricultural Extension Agent.

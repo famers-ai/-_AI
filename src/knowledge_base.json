@@ -1,0 +1,29 @@
+{
+    "Strawberries": {
+        "temp_min": 60,
+        "temp_max": 80,
+        "humidity_min": 60,
+        "humidity_max": 75,
+        "soil_moisture_min": 60,
+        "soil_moisture_max": 80,
+        "description": "Requires well-drained soil. High susceptibility to Botrytis cinerea in high humidity. Target pH 5.5-6.5."
+    },
+    "Tomatoes": {
+        "temp_min": 65,
+        "temp_max": 85,
+        "humidity_min": 60,
+        "humidity_max": 85,
+        "soil_moisture_min": 60,
+        "soil_moisture_max": 85,
+        "description": "Monitor for Early Blight. Blossom End Rot risk if irrigation is inconsistent. Optimal night temp > 60°F."
+    },
+    "Peppers": {
+        "temp_min": 70,
+        "temp_max": 90,
+        "humidity_min": 60,
+        "humidity_max": 75,
+        "soil_moisture_min": 50,
+        "soil_moisture_max": 70,
+        "description": "Sensitive to cold shock below 55°F. Thrives in stable warm conditions. Watch for Aphids."
+    }
+}

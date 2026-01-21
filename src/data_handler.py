@@ -3,6 +3,9 @@ import pandas as pd
 import random
 from datetime import datetime, timedelta
 
+import streamlit as st
+
+@st.cache_data(ttl=300)
 def fetch_weather_data(lat=37.7749, lon=-122.4194):
     """
     Fetches current weather data from Open-Meteo API (Imperial Units for US Market).

@@ -1,14 +1,19 @@
 import os
 import google.generativeai as genai
+import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEY = os.getenv("GEMINI_API_KEY")
+# Priority: Streamlit Secrets (Cloud) > os.getenv (Local .env)
+if "GEMINI_API_KEY" in st.secrets:
+    API_KEY = st.secrets["GEMINI_API_KEY"]
+else:
+    API_KEY = os.getenv("GEMINI_API_KEY")
 
 def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
     if not API_KEY:
-        return None
+        return "⚠️ **Error**: API Key not found. Please set GEMINI_API_KEY in Streamlit Secrets."
 
     try:
         genai.configure(api_key=API_KEY)

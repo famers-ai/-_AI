@@ -23,7 +23,8 @@ def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
     try:
         genai.configure(api_key=API_KEY)
         # Use stable Gemini 1.5 Flash model
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model_name = get_active_model_name()
+        model = genai.GenerativeModel(model_name)
         
         prompt = f"""
         You are {role}, also known as Mars AI.
@@ -133,7 +134,8 @@ def generate_weekly_report(crop_type):
     try:
         genai.configure(api_key=API_KEY)
         # Use stable Gemini 1.5 Flash model
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model_name = get_active_model_name()
+        model = genai.GenerativeModel(model_name)
         
         prompt = f"""
         You are a Farm Manager AI. Write a 'Weekly Farm Report' based on the stats.
@@ -160,7 +162,8 @@ def analyze_crop_image(image_data):
     try:
         genai.configure(api_key=API_KEY)
         # Use stable model version
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model_name = get_active_model_name()
+        model = genai.GenerativeModel(model_name)
         
         prompt = f"""
         You are Mars AI, an expert US Agricultural Extension Agent.

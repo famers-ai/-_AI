@@ -11,7 +11,15 @@ from src.db_handler import init_db, get_user_pref, set_user_pref, save_labeled_d
 # Initialize DB
 init_db()
 
-st.set_page_config(page_title="Mars AI", page_icon="🪐", layout="wide")
+st.set_page_config(page_title="ForHuman AI", page_icon="🪐", layout="wide")
+
+# DEBUG: show which secret keys are available (helps verify GEMINI_API_KEY)
+try:
+    keys = list(st.secrets.keys())
+    st.warning(f"🔑 Available Streamlit secret keys: {keys}")
+except Exception as e:
+    st.error(f"⚠️ Unable to read Streamlit secrets: {e}")
+
 
 # --- CSS Styling for "Premium" Feel ---
 st.markdown("""
@@ -46,7 +54,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Sidebar ---
-st.sidebar.title("Mars AI")
+st.sidebar.title("ForHuman AI")
 st.sidebar.caption("Future Farming Solutions")
 
 # 1. Load Saved Settings
@@ -85,7 +93,7 @@ st.sidebar.info(f"💾 Settings Saved: **{selected_crop}**")
 # --- Legal & Disclaimer ---
 with st.sidebar.expander("⚖️ Legal & Privacy", expanded=False):
     st.caption("""
-    **Disclaimer:** Mars AI provides insights for reference only. It is not a substitute for professional agricultural advice. 
+    **Disclaimer:** ForHuman AI provides insights for reference only. It is not a substitute for professional agricultural advice. 
     We are not liable for crop loss or damages resulting from reliance on these results.
     
     **Data Privacy:** Uploaded images are analyzed by Google Gemini. Verification data helps improve the model.
@@ -94,7 +102,7 @@ with st.sidebar.expander("⚖️ Legal & Privacy", expanded=False):
 # Fetch Data (Real-time based on location)
 weather = fetch_weather_data(lat=selected_coords[0], lon=selected_coords[1])
 
-st.title(f"Mars AI: Smart Farm Monitor ({crop_type})")
+st.title(f"ForHuman AI: Smart Farm Monitor ({crop_type})")
 st.caption("Powered by Google Gemini 3 • Open-Meteo Weather API")
 
 # --- TABS LAYOUT ---
@@ -249,7 +257,7 @@ with tab4:
 
 # Footer
 st.markdown("---")
-st.caption("Powered by Gemini 3 • Open-Meteo • Mars AI v1.2")
+st.caption("Powered by Gemini 3 • Open-Meteo • ForHuman AI v1.2")
 
 # --- TAB 5: WEEKLY REPORT ---
 with tab5:

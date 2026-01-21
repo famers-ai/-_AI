@@ -11,6 +11,9 @@ if "GEMINI_API_KEY" in st.secrets:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 elif "GEMINI_APT_KEY" in st.secrets:
     API_KEY = st.secrets["GEMINI_APT_KEY"]
+else:
+    # 로컬 개발용 환경 변수 fallback
+    API_KEY = os.getenv("GEMINI_API_KEY")
 # Helper to get a valid Gemini model name
 def get_active_model_name():
     """Return a model name that supports generateContent.
@@ -53,7 +56,7 @@ def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
         model = genai.GenerativeModel(get_active_model_name())
         
         prompt = f"""
-        You are {role}, also known as Mars AI.
+        You are {role}, also known as ForHuman AI.
         Current Crop: {crop_type}
         
         Analyze the following real-time data and provide a specific "Ag-Prescription".
@@ -192,7 +195,7 @@ def analyze_crop_image(image_data):
         model = genai.GenerativeModel(get_active_model_name())
         
         prompt = f"""
-        You are Mars AI, an expert US Agricultural Extension Agent.
+        You are ForHuman AI, an expert US Agricultural Extension Agent.
         Analyze this image of a crop.
         1. Identify the crop.
         2. Diagnose any disease or deficiency (e.g., fungal, nutrient, pest).

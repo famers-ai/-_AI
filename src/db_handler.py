@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 DB_NAME = "farm_data.db"
+# Database handler initialized
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)

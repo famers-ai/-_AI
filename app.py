@@ -20,7 +20,19 @@ APP_SETTINGS = config.get("app_settings", {})
 CROP_OPTIONS = config.get("crop_options", [])
 LOCATIONS = config.get("locations", {})
 
-st.set_page_config(page_title=APP_SETTINGS.get("title", "ForHuman AI"), page_icon=APP_SETTINGS.get("icon", "🪐"), layout="wide")
+# Load Logo if available
+logo_path = "assets/logo.png"
+try:
+    from PIL import Image
+    page_icon = Image.open(logo_path)
+except:
+    page_icon = APP_SETTINGS.get("icon", "🪐")
+
+st.set_page_config(
+    page_title=APP_SETTINGS.get("title", "ForHuman AI"),
+    page_icon=page_icon,
+    layout="wide"
+)
 
 # DEBUG: show which secret keys are available
 # try:

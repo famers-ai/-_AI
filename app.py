@@ -1,97 +1,142 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
-import random
 import time
-from PIL import Image
-from src.data_handler import fetch_weather_data, calculate_pest_risk, fetch_market_prices, get_coordinates_from_city
-from src.ai_engine import analyze_situation, analyze_crop_image, generate_weekly_report
-from src.db_handler import init_db, get_user_pref, set_user_pref, save_labeled_data
+from src.utils import load_config
+from src.data_handler import fetch_weather_data, get_coordinates_from_city
+from src.db_handler import init_db, get_user_pref, set_user_pref
+
+# Import Tab Components
+from src.tabs.dashboard import render_dashboard
+from src.tabs.ai_doctor import render_ai_doctor
+from src.tabs.pest_forecast import render_pest_forecast
+from src.tabs.market_prices import render_market_prices
+from src.tabs.weekly_report import render_weekly_report
 
 # Initialize DB
 init_db()
 
-st.set_page_config(page_title="ForHuman AI", page_icon="🪐", layout="wide")
+# Load Config
+config = load_config()
+APP_SETTINGS = config.get("app_settings", {})
+CROP_OPTIONS = config.get("crop_options", [])
+LOCATIONS = config.get("locations", {})
 
-# DEBUG: show which secret keys are available (helps verify GEMINI_API_KEY)
-try:
-    keys = list(st.secrets.keys())
-    st.warning(f"🔑 Available Streamlit secret keys: {keys}")
-except Exception as e:
-    st.error(f"⚠️ Unable to read Streamlit secrets: {e}")
+st.set_page_config(page_title=APP_SETTINGS.get("title", "ForHuman AI"), page_icon=APP_SETTINGS.get("icon", "🪐"), layout="wide")
+
+# DEBUG: show which secret keys are available
+# try:
+#     keys = list(st.secrets.keys())
+    # st.warning(f"🔑 Available Streamlit secret keys: {keys}") # Commented out for production feel
+# except Exception as e:
+#     pass
 
 
 # --- CSS Styling for "Premium" Feel ---
 st.markdown("""
 <style>
+    /* Global Settings */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+        color: #1e293b;
+    }
+    
     .stApp {
         background-color: #f8f9fa;
     }
+
+    /* Hide Streamlit Branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display:none;}
+    
+    /* Custom Metric Card */
     .metric-card {
         background-color: white;
-        padding: 15px;
-        border-radius: 12px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        padding: 20px;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         border-left: 5px solid #2ed573;
+        transition: transform 0.2s;
     }
+    .metric-card:hover {
+        transform: translateY(-2px);
+    }
+    .metric-label {
+        color: #64748b;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .metric-value {
+        color: #0f172a;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-top: 8px;
+    }
+
+    /* AI Insight Card */
     .ai-card {
-        background-color: #ffffff;
-        padding: 25px;
-        border-radius: 15px;
-        border: 1px solid #dfe4ea;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+        padding: 24px;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        margin-top: 20px;
     }
-    .status-badge {
-        display: inline-block;
-        padding: 5px 10px;
-        border-radius: 15px;
-        background: #eccc68;
+    
+    /* Tabs styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+        background-color: transparent;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: white;
+        border-radius: 10px;
+        color: #64748b;
+        font-weight: 600;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #2ed573;
         color: white;
-        font-size: 12px;
-        font-weight: bold;
+        border: none;
+    }
+    
+    /* Remove padding at top */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # --- Sidebar ---
-st.sidebar.title("ForHuman AI")
+st.sidebar.title(APP_SETTINGS.get("title", "ForHuman AI"))
 st.sidebar.caption("Future Farming Solutions")
 
 # 1. Load Saved Settings
-saved_crop = get_user_pref("crop_type", "Strawberries")
-crop_options = ["Strawberries", "Tomatoes", "Peppers"]
+saved_crop = get_user_pref("crop_type", APP_SETTINGS.get("default_crop", "Strawberries"))
 try:
-    default_index = crop_options.index(saved_crop)
+    default_index = CROP_OPTIONS.index(saved_crop)
 except:
     default_index = 0
 
 # 2. Controls
-selected_crop = st.sidebar.selectbox("Select Crop", crop_options, index=default_index)
+selected_crop = st.sidebar.selectbox("Select Crop", CROP_OPTIONS, index=default_index)
 
-from src.data_handler import fetch_weather_data, calculate_pest_risk, fetch_market_prices, get_coordinates_from_city
-# ... (imports are fine, just ensuring get_coordinates is available, actually I should update import line separately or assume it works if I change usage?)
-# Wait, I need to update the import in app.py. Line 7 imports specific functions. 
-# I will make a larger block replacement including imports if needed, or just update the Sidebar logic and fix imports later.
-# Let's assume I need to update import.
-# Actually, let's just use the function if imported.
-# I will execute 2 replacements: one for import, one for sidebar.
-
-# REPLACEMENT 1: Sidebar Logic
 # Location Selector
 loc_mode = st.sidebar.radio("📍 Farm Location Mode", ["Preset", "Custom Search"])
 
 if loc_mode == "Preset":
-    LOCATIONS = {
-        "California (US)": (36.7783, -119.4179),
-        "New York (US)": (40.7128, -74.0060),
-        "Seoul (KR)": (37.5665, 126.9780),
-        "London (UK)": (51.5074, -0.1278),
-        "Tokyo (JP)": (35.6762, 139.6503),
-        "Amsterdam (NL)": (52.3676, 4.9041),
-        "Sydney (AU)": (-33.8688, 151.2093)
-    }
     selected_loc_name = st.sidebar.selectbox("Select Region", list(LOCATIONS.keys()), index=0)
-    selected_coords = LOCATIONS[selected_loc_name]
+    loc_data = LOCATIONS[selected_loc_name]
+    selected_coords = (loc_data["lat"], loc_data["lon"])
 else:
     city_query = st.sidebar.text_input("Enter City Name", "Paris")
     if city_query:
@@ -102,19 +147,21 @@ else:
             st.sidebar.success(f"Found: {name}")
         else:
             st.sidebar.error("City not found")
-            selected_loc_name = "California (US)"
-            selected_coords = (36.7783, -119.4179)
+            first_loc = list(LOCATIONS.values())[0]
+            selected_loc_name = list(LOCATIONS.keys())[0]
+            selected_coords = (first_loc["lat"], first_loc["lon"])
     else:
-        selected_loc_name = "California (US)"
-        selected_coords = (36.7783, -119.4179)
+        first_loc = list(LOCATIONS.values())[0]
+        selected_loc_name = list(LOCATIONS.keys())[0]
+        selected_coords = (first_loc["lat"], first_loc["lon"])
 
 # 3. Auto-Save Settings
 if selected_crop != saved_crop:
     set_user_pref("crop_type", selected_crop)
-    # Rerun to refresh data immediately not strictly needed as script runs top down, but good to know
+    # st.experimental_rerun() # Optional: Force refresh
 
-crop_type = selected_crop # Alias
-    
+app_crop_type = selected_crop # Alias
+
 auto_refresh = st.sidebar.checkbox("Auto-refresh Data", value=False)
 st.sidebar.divider()
 st.sidebar.info(f"💾 Settings Saved: **{selected_crop}**")
@@ -131,7 +178,7 @@ with st.sidebar.expander("⚖️ Legal & Privacy", expanded=False):
 # Fetch Data (Real-time based on location)
 weather = fetch_weather_data(lat=selected_coords[0], lon=selected_coords[1])
 
-st.title(f"ForHuman AI: Smart Farm Monitor ({crop_type})")
+st.title(f"ForHuman AI: Smart Farm Monitor ({app_crop_type})")
 st.caption("Powered by Google Gemini 3 • Open-Meteo Weather API")
 
 # --- TABS LAYOUT ---
@@ -139,176 +186,20 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "📸 AI Crop Doctor",
 
 # --- TAB 1: DASHBOARD ---
 with tab1:
-    col_metrics, col_ai = st.columns([1.2, 1])
-
-    with col_metrics:
-        st.subheader(f"📍 Weather Station: {selected_loc_name}")
-        
-        # Custom HTML Metric Cards
-        c1, c2 = st.columns(2)
-        c3, c4 = st.columns(2)
-        
-        with c1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-label">Temperature</div>
-                <div class="metric-value">{weather['temperature']}°F</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with c2:
-            st.markdown(f"""
-            <div class="metric-card" style="border-left-color: #1e90ff;">
-                <div class="metric-label">Humidity</div>
-                <div class="metric-value">{weather['humidity']}%</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with c3:
-            st.markdown(f"""<br>
-            <div class="metric-card" style="border-left-color: #ffa502;">
-                <div class="metric-label">Wind Speed</div>
-                <div class="metric-value">{weather['wind_speed']} mph</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with c4:
-            rain_color = "#ff4757" if weather['rain'] > 1.0 else "#2ed573"
-            st.markdown(f"""<br>
-            <div class="metric-card" style="border-left-color: {rain_color};">
-                <div class="metric-label">Precipitation</div>
-                <div class="metric-value">{weather['rain']} in</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.divider()
-        st.markdown("### 📡 On-Site Sensors")
-        st.info("⚠️ No sensors connected.")
-        st.caption("Connect a Tuya/SmartThings sensor to unlock: Real-time Soil Moisture & Auto-Irrigation Alerts.")
-        st.button("🔗 Connect Sensor (Pro Feature)")
-
-    with col_ai:
-        st.subheader("🤖 AI Agronomist")
-        # AI On-Demand to save quota
-        if st.button("🤖 Analyze Farm Conditions"):
-            with st.spinner("Analyzing..."):
-                insight = analyze_situation(weather, crop_type)
-        else:
-            insight = "Click the button to get AI insights."
-        
-        st.markdown(f"""
-        <div class="ai-card">
-            {insight}
-            <hr>
-            <small style="color: grey;">Updated: {time.strftime('%H:%M')}</small>
-        </div>
-        """, unsafe_allow_html=True)
+    render_dashboard(weather, selected_loc_name, app_crop_type)
 
 # --- TAB 2: AI CROP DOCTOR (Scale AI Mode) ---
 with tab2:
-    st.subheader("📸 AI Crop Doctor (Beta)")
-    st.write("Upload a photo of your crop. Our AI will diagnose it, and you verify it.")
-    
-    # Session State for Feedback Loop
-    if 'diagnosis' not in st.session_state:
-        st.session_state.diagnosis = None
-    
-    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
-    
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption='Uploaded Crop Image', width=300)
-        
-        if st.button("🔍 Diagnose Now"):
-            with st.spinner("Gemini Vision 3 is analyzing..."):
-                st.session_state.diagnosis = analyze_crop_image(image)
-    
-    # Show Result & Collect Feedback
-    if st.session_state.diagnosis:
-        st.markdown(f"""
-        <div class="ai-card">
-            {st.session_state.diagnosis}
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.divider()
-        st.write("### 👨‍🌾 Farmer Verification (Human-in-the-Loop)")
-        st.write("Is this diagnosis correct? Your feedback improves the system.")
-        
-        c_yes, c_no = st.columns(2)
-        if c_yes.button("✅ Yes, Correct"):
-            save_labeled_data("img_001", "Correct", "AI_Prediction")
-            st.success("Thank you! Your verified data has been saved to the training set.")
-            st.balloons()
-            
-        if c_no.button("❌ No, Incorrect"):
-            correct_label = st.text_input("What is the real disease?")
-            if st.button("Submit Correction"):
-                save_labeled_data("img_001", "Incorrect", correct_label)
-                st.info("Feedback received. We will re-train our model with your input.")
+    render_ai_doctor()
 
 # --- TAB 3: PEST FORECAST ---
 with tab3:
-    st.subheader("🐛 Pest Risk Radar")
-    pest_data = calculate_pest_risk(weather, crop_type)
-    
-    # Styled Alert
-    alert_color = "red" if pest_data['level'] == "High" else "orange" if pest_data['level'] == "Medium" else "green"
-    
-    st.markdown(f"""
-    <div style="background-color: {alert_color}; padding: 15px; border-radius: 10px; color: white; text-align: center; margin-bottom: 20px;">
-        <h2 style="margin:0;">Risk Level: {pest_data['level']}</h2>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown(f"**Target Pest**: {pest_data['pest']}")
-        st.progress(pest_data['prob'] / 100)
-        st.caption(f"Probability: {pest_data['prob']}%")
-    
-    with c2:
-        st.success("**Actionable Advice**" if pest_data['level'] == "Low" else "**Immediate Action Required**")
-        st.write("Apply preventive organic pesticide." if pest_data['prob'] > 50 else "Monitor lower leaves for early signs.")
+    render_pest_forecast(weather, app_crop_type)
 
 # --- TAB 4: MARKET PRICES ---
 with tab4:
-    st.subheader("📈 Wholesale Market Trends")
-    st.caption(f"Real-time {crop_type} auction prices (USD/kg)")
-    
-    df_prices = fetch_market_prices(crop_type)
-    
-    latest_price = df_prices.iloc[0]['Price ($/kg)']
-    delta = round(latest_price - df_prices.iloc[1]['Price ($/kg)'], 2)
-    
-    st.metric("Today's Avg. Price", f"${latest_price}", f"{delta}")
-    
-    # Financial Area Chart
-    fig_price = px.area(df_prices, x='Date', y='Price ($/kg)', title="7-Day Price Trend", line_shape='spline')
-    fig_price.update_layout(xaxis_title="", yaxis_title="Price ($)")
-    st.plotly_chart(fig_price, use_container_width=True)
-
-# Footer
-st.markdown("---")
-st.caption("Powered by Gemini 3 • Open-Meteo • ForHuman AI v1.2")
+    render_market_prices(app_crop_type)
 
 # --- TAB 5: WEEKLY REPORT ---
 with tab5:
-    st.subheader("📑 Weekly Farm Report")
-    st.caption("AI-generated performance analysis based on standard data.")
-    
-    st.markdown("### 📝 AI Agronomist Review")
-    if st.button("📑 Generate Report"):
-        with st.spinner("Generating weekly summary..."):
-             report_text = generate_weekly_report(crop_type)
-    else:
-        report_text = "Click button to generate report."
-     
-    st.markdown(f"""
-    <div class="ai-card">
-        {report_text}
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.divider()
-    st.info("ℹ️ Connect sensors to enable Safety Logs and precise Savings Calculation.")
+    render_weekly_report(app_crop_type)

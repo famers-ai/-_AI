@@ -77,8 +77,8 @@ def get_weekly_stats(crop_type):
     In real app, this would filter by date range.
     """
     conn = sqlite3.connect(DB_NAME)
-    query = f"SELECT AVG(temperature) as avg_temp, AVG(soil_moisture) as avg_moisture, COUNT(*) as count FROM sensor_logs WHERE crop_type = '{crop_type}'"
-    df = pd.read_sql_query(query, conn)
+    query = "SELECT AVG(temperature) as avg_temp, AVG(soil_moisture) as avg_moisture, COUNT(*) as count FROM sensor_logs WHERE crop_type = ?"
+    df = pd.read_sql_query(query, conn, params=(crop_type,))
     conn.close()
     
     if df.empty or df.iloc[0]['count'] == 0:
@@ -92,10 +92,17 @@ def get_weekly_stats(crop_type):
 
 def get_historical_data_db(crop_type, limit=50):
     conn = sqlite3.connect(DB_NAME)
-    query = f"SELECT * FROM sensor_logs WHERE crop_type = '{crop_type}' ORDER BY timestamp DESC LIMIT {limit}"
-    df = pd.read_sql_query(query, conn)
+    query = "SELECT * FROM sensor_logs WHERE crop_type = ? ORDER BY timestamp DESC LIMIT ?"
+    df = pd.read_sql_query(query, conn, params=(crop_type, limit))
     conn.close()
     if not df.empty:
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         df = df.sort_values('timestamp') # Plotly needs sorted time
+    return df
+
+def get_training_data_stats():
+    conn = sqlite3.connect(DB_NAME)
+    query = "SELECT label, COUNT(*) as count FROM training_data GROUP BY label"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
     return df

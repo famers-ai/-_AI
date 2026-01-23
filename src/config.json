@@ -1,0 +1,42 @@
+{
+    "app_settings": {
+        "title": "ForHuman AI - Future Smart Farming & AI Agronomist",
+        "icon": "🪐",
+        "default_crop": "Strawberries"
+    },
+    "crop_options": [
+        "Strawberries",
+        "Tomatoes",
+        "Peppers"
+    ],
+    "locations": {
+        "California (US)": {
+            "lat": 36.7783,
+            "lon": -119.4179
+        },
+        "New York (US)": {
+            "lat": 40.7128,
+            "lon": -74.0060
+        },
+        "Seoul (KR)": {
+            "lat": 37.5665,
+            "lon": 126.9780
+        },
+        "London (UK)": {
+            "lat": 51.5074,
+            "lon": -0.1278
+        },
+        "Tokyo (JP)": {
+            "lat": 35.6762,
+            "lon": 139.6503
+        },
+        "Amsterdam (NL)": {
+            "lat": 52.3676,
+            "lon": 4.9041
+        },
+        "Sydney (AU)": {
+            "lat": -33.8688,
+            "lon": 151.2093
+        }
+    }
+}

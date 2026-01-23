@@ -7,14 +7,20 @@ load_dotenv()
 
 def get_api_key():
     # Priority: Streamlit Secrets (Cloud) > os.getenv (Local .env)
-    if "GEMINI_API_KEY" in st.secrets:
-        return st.secrets["GEMINI_API_KEY"]
-    elif "GEMINI_APT_KEY" in st.secrets:
-        return st.secrets["GEMINI_APT_KEY"]
+    try:
+        # Accessing st.secrets raises generic Exception or StreamlitSecretNotFoundError if no secrets file exists
+        if "GEMINI_API_KEY" in st.secrets:
+            return st.secrets["GEMINI_API_KEY"]
+        elif "GEMINI_APT_KEY" in st.secrets:
+            return st.secrets["GEMINI_APT_KEY"]
+    except Exception:
+        pass # Fallback to environment variables
+    
     return os.getenv("GEMINI_API_KEY")
 
 API_KEY = get_api_key() # Keep for backward compatibility if needed, but functions should call get_api_key()
 # Helper to get a valid Gemini model name
+@st.cache_data(ttl=3600)
 def get_active_model_name():
     """Return a model name that supports generateContent.
     Prioritizes known stable models (gemini-pro, gemini-1.0-pro) and falls back to the first available.

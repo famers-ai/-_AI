@@ -2,7 +2,7 @@ import streamlit as st
 from PIL import Image
 import plotly.express as px
 from src.ai_engine import analyze_crop_image
-from src.db_handler import save_labeled_data, get_training_data_stats
+import src.db_handler as db_handler
 
 def render_ai_doctor():
     st.subheader("📸 AI Crop Doctor (Beta)")
@@ -36,20 +36,20 @@ def render_ai_doctor():
         
         c_yes, c_no = st.columns(2)
         if c_yes.button("✅ Yes, Correct"):
-            save_labeled_data("img_001", "Correct", "AI_Prediction")
+            db_handler.save_labeled_data("img_001", "Correct", "AI_Prediction")
             st.success("Thank you! Your verified data has been saved to the training set.")
             st.balloons()
             
         if c_no.button("❌ No, Incorrect"):
             correct_label = st.text_input("What is the real disease?")
             if st.button("Submit Correction"):
-                save_labeled_data("img_001", "Incorrect", correct_label)
+                db_handler.save_labeled_data("img_001", "Incorrect", correct_label)
                 st.info("Feedback received. We will re-train our model with your input.")
 
     # Show Community Stats
     st.divider()
     st.caption("📊 Community Data Contribution")
-    stats_df = get_training_data_stats()
+    stats_df = db_handler.get_training_data_stats()
     if not stats_df.empty:
         # Simple bar chart
         fig_stats = px.bar(stats_df, x='label', y='count', title="User Validations", color='label', color_discrete_map={"Correct": "#2ed573", "Incorrect": "#ff4757"})

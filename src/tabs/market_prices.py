@@ -15,8 +15,12 @@ def render_market_prices(crop_type):
     if not df_prices.empty:
         col_name = "Price ($/lb)"
         latest_price = df_prices.iloc[-1][col_name]
-        prev_price = df_prices.iloc[-2][col_name]
-        delta = round(latest_price - prev_price, 2)
+        
+        if len(df_prices) >= 2:
+            prev_price = df_prices.iloc[-2][col_name]
+            delta = round(latest_price - prev_price, 2)
+        else:
+            delta = 0.0
         
         st.metric("Avg. Price (USD/lb)", f"${latest_price}", f"{delta}")
         

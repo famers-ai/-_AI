@@ -15,13 +15,6 @@ def fetch_weather_data(lat=37.7749, lon=-122.4194):
     """
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch"
-        response = requests.get(url)
-        data = response.json()
-        current = data.get('current', {})
-        return {
-            "temperature": current.get('temperature_2m', 68),
-            "humidity": current.get('relative_humidity_2m', 50),
-            "rain": current.get('rain', 0.0),
             "wind_speed": current.get('wind_speed_10m', 0.0)
         }
     except Exception as e:
@@ -36,7 +29,7 @@ def get_coordinates_from_city(city_name):
     """
     try:
         url = f"https://geocoding-api.open-meteo.com/v1/search?name={city_name}&count=1&language=en&format=json"
-        response = requests.get(url)
+        response = requests.get(url, timeout=5) # Added timeout
         data = response.json()
         if "results" in data:
             result = data["results"][0]
@@ -118,7 +111,7 @@ def fetch_7day_weather(lat, lon):
     """
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,precipitation_sum&temperature_unit=fahrenheit&precipitation_unit=inch&wind_speed_unit=mph&timezone=auto"
-        response = requests.get(url)
+        response = requests.get(url, timeout=10) # Added Timeout
         data = response.json()
         return data.get('daily', {})
     except Exception as e:
@@ -225,7 +218,7 @@ def fetch_market_prices(crop_type):
     if api_key:
         try:
             # Basic Auth with API Key (Username=Key, Password="")
-            response = requests.get(USDA_API_URL, auth=(api_key, ""))
+            response = requests.get(USDA_API_URL, auth=(api_key, ""), timeout=10) # Added timeout
             if response.status_code == 200:
                 report = response.json()
                 # TODO: Implement complex JSON parsing for USDA Market News

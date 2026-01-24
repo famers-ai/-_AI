@@ -203,8 +203,10 @@ indoor_weather = {
 st.title(f"ForHuman AI: Smart Farm Monitor ({app_crop_type})")
 st.caption("Powered by Google Gemini 3 • Open-Meteo Weather API")
 
+from src.tabs.voice_log import render_voice_log
+
 # --- TABS LAYOUT ---
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "📸 AI Crop Doctor", "🐛 Pest Forecast", "📈 Market Prices", "📑 Weekly Report"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Dashboard", "📸 AI Crop Doctor", "🐛 Pest Forecast", "📈 Market Prices", "📑 Weekly Report", "🗣️ Voice Log"])
 
 # --- TAB 1: DASHBOARD ---
 with tab1:
@@ -214,7 +216,6 @@ with tab1:
 with tab2:
     render_ai_doctor()
 
-# --- TAB 3: PEST FORECAST ---
 # --- TAB 3: PEST FORECAST ---
 with tab3:
     # Pass lat/lon for 7-day forecast
@@ -227,3 +228,7 @@ with tab4:
 # --- TAB 5: WEEKLY REPORT ---
 with tab5:
     render_weekly_report(app_crop_type)
+
+# --- TAB 6: VOICE LOG ---
+with tab6:
+    render_voice_log()

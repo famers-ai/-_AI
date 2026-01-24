@@ -2,11 +2,12 @@ import unittest
 import os
 import sqlite3
 import pandas as pd
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Import modules to test
 from src.utils import load_config
 import src.db_handler as db
+
 
 class TestConfig(unittest.TestCase):
     def test_load_config_exists(self):
@@ -15,6 +16,7 @@ class TestConfig(unittest.TestCase):
         self.assertIsInstance(config, dict)
         self.assertIn("crop_options", config)
         self.assertIn("locations", config)
+
 
 class TestDBHandler(unittest.TestCase):
     
@@ -50,6 +52,7 @@ class TestDBHandler(unittest.TestCase):
         """Test logging sensor data."""
         weather = {"temperature": 75, "humidity": 50}
         sensor = {"soil_moisture": 60}
+        
         db.log_sensor_data("Strawberries", weather, sensor)
         
         # Verify it was written
@@ -71,10 +74,14 @@ class TestDBHandler(unittest.TestCase):
         
         # stats should have 2 rows: Correct (2), Incorrect (1)
         correct_count = stats[stats['label'] == 'Correct']['count'].values[0]
-        incorrect_count = stats[stats['label'] == 'Incorrect']['count'].values[0]
+        
+        # Check incorrect count
+        incorrect_query_result = stats[stats['label'] == 'Incorrect']
+        incorrect_count = incorrect_query_result['count'].values[0]
         
         self.assertEqual(correct_count, 2)
         self.assertEqual(incorrect_count, 1)
+
 
 if __name__ == '__main__':
     unittest.main()

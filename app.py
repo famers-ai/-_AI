@@ -175,6 +175,22 @@ if selected_crop != saved_crop:
 app_crop_type = selected_crop # Alias
 
 auto_refresh = st.sidebar.checkbox("Auto-refresh Data", value=False)
+
+st.sidebar.divider()
+st.sidebar.subheader("🌡️ Indoor Environment")
+st.sidebar.caption("Override sensor data for analysis.")
+
+# Default values based on typical ideal conditions
+indoor_temp = st.sidebar.number_input("Indoor Temp (°F)", min_value=32.0, max_value=120.0, value=72.0, step=0.5)
+indoor_humidity = st.sidebar.number_input("Indoor Humidity (%)", min_value=10.0, max_value=100.0, value=65.0, step=1.0)
+
+indoor_weather = {
+    "temperature": indoor_temp,
+    "humidity": indoor_humidity,
+    "rain": 0.0,  # Indoor, so no rain
+    "wind_speed": 0.0 # Assume calm indoors or handle via fan setting later
+}
+
 st.sidebar.divider()
 st.sidebar.info(f"💾 Settings Saved: **{selected_crop}**")
 
@@ -198,7 +214,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Dashboard", "📸 AI Crop Doctor",
 
 # --- TAB 1: DASHBOARD ---
 with tab1:
-    render_dashboard(weather, selected_loc_name, app_crop_type)
+    render_dashboard(weather, indoor_weather, selected_loc_name, app_crop_type)
 
 # --- TAB 2: AI CROP DOCTOR (Scale AI Mode) ---
 with tab2:
@@ -206,7 +222,8 @@ with tab2:
 
 # --- TAB 3: PEST FORECAST ---
 with tab3:
-    render_pest_forecast(weather, app_crop_type)
+    st.info(f"💡 Analysis based on Manual Indoor Settings (Temp: {indoor_temp}°F, Humidity: {indoor_humidity}%)")
+    render_pest_forecast(indoor_weather, app_crop_type)
 
 # --- TAB 4: MARKET PRICES ---
 with tab4:

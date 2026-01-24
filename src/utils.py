@@ -1,6 +1,7 @@
 import json
 import os
 
+
 def load_config():
     """Loads the configuration from src/config.json"""
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -12,5 +13,7 @@ def load_config():
         # Fallback if file not found (though it should be there)
         return {
             "crop_options": ["Strawberries", "Tomatoes", "Peppers"],
-            "locations": {"California (US)": {"lat": 36.7783, "lon": -119.4179}}
+            "locations": {
+                "California (US)": {"lat": 36.7783, "lon": -119.4179}
+            }
         }

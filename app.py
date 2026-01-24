@@ -58,14 +58,30 @@ st.markdown("""
     }
 
     /* Hide Streamlit Branding */
-    /* Hide Streamlit Branding */
     #MainMenu {visibility: hidden;}
-    footer {display: none !important;}
-    header {visibility: hidden !important;}
-    [data-testid="stToolbar"] {visibility: hidden !important;}
-    [data-testid="stDecoration"] {display: none !important;}
-    [data-testid="stStatusWidget"] {display: none !important;}
-    .stDeployButton {display:none !important;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Aggressive hiding for all known Streamlit UI elements */
+    [data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
+    [data-testid="stDecoration"] {visibility: hidden !important; display: none !important;}
+    [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
+    [data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
+    
+    /* Footer specific */
+    .st-emotion-cache-164nlkn {display: none !important;} /* Common hash for footer */
+    .st-emotion-cache-1l1l072 {display: none !important;} /* Common hash for deployment info */
+    viewer-footer-container {display: none !important;}
+    
+    /* Hide the "Manage App" button usually at bottom right */
+    .stApp > header {display: none !important;}
+    .stApp > footer {display: none !important;}
+    
+    /* Force body to top */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+    }
     
     /* Custom Metric Card */
     .metric-card {

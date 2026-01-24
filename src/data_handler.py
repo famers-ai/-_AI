@@ -15,6 +15,13 @@ def fetch_weather_data(lat=37.7749, lon=-122.4194):
     """
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        current = data.get('current', {})
+        return {
+            "temperature": current.get('temperature_2m', 68),
+            "humidity": current.get('relative_humidity_2m', 50),
+            "rain": current.get('rain', 0.0),
             "wind_speed": current.get('wind_speed_10m', 0.0)
         }
     except Exception as e:

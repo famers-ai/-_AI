@@ -10,7 +10,7 @@ import time
 DB_NAME = "farm_data.db"
 
 def init_voice_db():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_NAME, timeout=30)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS voice_logs
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,7 +22,7 @@ def init_voice_db():
     conn.close()
 
 def save_log(summary, action, category):
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_NAME, timeout=30)
     c = conn.cursor()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     c.execute("INSERT INTO voice_logs (timestamp, audio_summary, action_taken, category) VALUES (?, ?, ?, ?)",
@@ -31,7 +31,7 @@ def save_log(summary, action, category):
     conn.close()
 
 def get_logs():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_NAME, timeout=30)
     df = pd.read_sql_query("SELECT timestamp, category, action_taken, audio_summary FROM voice_logs ORDER BY timestamp DESC", conn)
     conn.close()
     return df

@@ -200,11 +200,20 @@ def analyze_pest_risk_with_ai(weather_forecast, crop_type):
         
         response = model.generate_content(prompt)
         text = response.text.strip()
-        if text.startswith("```json"):
-            text = text[7:-3]
-        if text.startswith("```"):
-             text = text[3:-3]
-        return json.loads(text)
+        # Robust JSON extraction
+        try:
+            import re
+            match = re.search(r'\[.*\]', text, re.DOTALL)
+            if match:
+                json_str = match.group()
+                return json.loads(json_str)
+            else:
+                # Try simple clean if regex fails
+                cleaned = text.replace("```json", "").replace("```", "").strip()
+                return json.loads(cleaned)
+        except Exception as e:
+            print(f"AI Pest Parse Error: {e} | Raw: {text[:100]}...")
+            return []
     except Exception as e:
         print(f"AI Pest Error: {e}")
         return []
@@ -240,11 +249,19 @@ def analyze_market_prices_with_ai(crop_type):
         
         response = model.generate_content(prompt)
         text = response.text.strip()
-        if text.startswith("```json"):
-            text = text[7:-3]
-        if text.startswith("```"):
-             text = text[3:-3]
-        return json.loads(text)
+        
+        try:
+            import re
+            match = re.search(r'\[.*\]', text, re.DOTALL)
+            if match:
+                json_str = match.group()
+                return json.loads(json_str)
+            else:
+                 cleaned = text.replace("```json", "").replace("```", "").strip()
+                 return json.loads(cleaned)
+        except Exception as e:
+            print(f"AI Market Parse Error: {e}")
+            return []
     except Exception as e:
         print(f"AI Market Error: {e}")
         return []

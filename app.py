@@ -186,8 +186,9 @@ st.sidebar.caption("Auto-estimated from outdoor weather (Virtual Sensor). Adjust
 # Virtual Sensor Logic: Estimate Indoor mostly based on Outdoor
 # Greenhouse Effect: +10F during day, +5F at night (simplified to +8F avg)
 # Transpiration: +10% higher humidity than outside
-estimated_temp = weather['temperature'] + 8.0
-estimated_hum = min(100.0, weather['humidity'] + 10.0)
+# Clamp values to valid range to prevent StreamlitValueBelowMinError
+estimated_temp = max(32.0, min(120.0, weather['temperature'] + 8.0))
+estimated_hum = max(10.0, min(100.0, weather['humidity'] + 10.0))
 
 indoor_temp = st.sidebar.number_input("Indoor Temp (°F)", min_value=32.0, max_value=120.0, value=float(estimated_temp), step=0.5)
 indoor_humidity = st.sidebar.number_input("Indoor Humidity (%)", min_value=10.0, max_value=100.0, value=float(estimated_hum), step=1.0)

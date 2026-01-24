@@ -55,32 +55,56 @@ st.markdown("""
     
     .stApp {
         background-color: #f8f9fa;
+        margin-top: -80px; /* Counteract padding if header is hidden poorly */
     }
 
-    /* Hide Streamlit Branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* --- NUCLEAR OPTION: HIDE STREAMLIT UI ELEMENTS --- */
     
-    /* Aggressive hiding for all known Streamlit UI elements */
-    [data-testid="stToolbar"] {visibility: hidden !important; display: none !important;}
-    [data-testid="stDecoration"] {visibility: hidden !important; display: none !important;}
-    [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
-    [data-testid="stHeader"] {visibility: hidden !important; display: none !important;}
+    /* 1. Header & Decoration Bars */
+    header, [data-testid="stHeader"], [data-testid="stDecoration"] {
+        visibility: hidden !important;
+        display: none !important;
+        height: 0px !important;
+    }
     
-    /* Footer specific */
-    .st-emotion-cache-164nlkn {display: none !important;} /* Common hash for footer */
-    .st-emotion-cache-1l1l072 {display: none !important;} /* Common hash for deployment info */
-    viewer-footer-container {display: none !important;}
+    /* 2. Main Menu (Hamburger) & Toolbar */
+    #MainMenu, [data-testid="stToolbar"], [data-testid="stStatusWidget"] {
+        visibility: hidden !important;
+        display: none !important;
+    }
     
-    /* Hide the "Manage App" button usually at bottom right */
-    .stApp > header {display: none !important;}
-    .stApp > footer {display: none !important;}
+    /* 3. Footer (Built with Streamlit) */
+    footer, [data-testid="stFooter"] {
+        visibility: hidden !important;
+        display: none !important;
+        height: 0px !important;
+    }
     
-    /* Force body to top */
+    /* 4. Sidebar specific footer (Built with Streamlit balloon) */
+    /* This targets the container that usually holds the footer in the sidebar */
+    section[data-testid="stSidebar"] > div > div:last-child {
+        display: none !important; 
+    }
+    /* Specific classes found in recent versions for the sidebar footer */
+    .st-emotion-cache-164nlkn, .st-emotion-cache-1l1l072, .viewerBadge_container__1QSob, .viewerBadge_link__1S137 {
+        display: none !important;
+    }
+    
+    /* 5. "Fullscreen" Button (Floating action in some deployments) */
+    button[title="View fullscreen"], [data-testid="StyledFullScreenButton"] {
+        visibility: hidden !important;
+        display: none !important;
+    }
+    
+    /* 6. Deploy Button (Top right) */
+    .stDeployButton {
+        display: none !important;
+    }
+
+    /* Force body to top since header is gone */
     .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 0rem !important;
+        padding-top: 0rem !important;
+        padding-bottom: 2rem !important;
     }
     
     /* Custom Metric Card */
@@ -140,11 +164,6 @@ st.markdown("""
         border: none;
     }
     
-    /* Remove padding at top */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
 </style>
 """, unsafe_allow_html=True)
 

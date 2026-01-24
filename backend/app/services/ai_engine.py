@@ -175,47 +175,44 @@ def analyze_pest_risk_with_ai(weather_forecast, crop_type):
         model = genai.GenerativeModel("gemini-1.5-flash")
         
         prompt = f"""
-        You are an expert plant pathologist. I will provide a 7-day weather forecast.
-        For each day, analyze the risk of pests/diseases for {crop_type}.
+        You are an expert plant pathologist. 
+        Analyze the pest/disease risk for {crop_type} based on this 7-day weather forecast.
         
-        FORECAST DATA:
+        FORECAST:
         {json.dumps(weather_forecast)}
         
-        OUTPUT FORMAT (JSON list only, no markdown):
+        Return a JSON ARRAY of 7 objects.
+        Do NOT use markdown code blocks. Just return the raw JSON.
+        
+        JSON Structure:
         [
             {{
                 "Date": "YYYY-MM-DD",
                 "Risk Score": 0-100 (integer),
-                "Condition": "High Risk: [Specific Disease]",
-                "Pest": "[Pest Name]"
-            }},
-            ...
+                "Condition": "High/Medium/Low Risk: [Specific Name]",
+                "Pest": "[Primary Pest Name]"
+            }}
         ]
-        
-        Rules:
-        - Strict JSON output.
-        - High humidity + moderate temp = Fungal risk (Botrytis, Blight).
-        - Hot + Dry = Mite risk.
         """
         
         response = model.generate_content(prompt)
         text = response.text.strip()
-        # Robust JSON extraction
+        
+        # Robust Clean & Parse
         try:
+            # Remove any markdown wrapping if present
+            text = text.replace("```json", "").replace("```", "").strip()
+            
             import re
             match = re.search(r'\[.*\]', text, re.DOTALL)
             if match:
-                json_str = match.group()
-                return json.loads(json_str)
-            else:
-                # Try simple clean if regex fails
-                cleaned = text.replace("```json", "").replace("```", "").strip()
-                return json.loads(cleaned)
+                return json.loads(match.group())
+            return json.loads(text)
         except Exception as e:
-            print(f"AI Pest Parse Error: {e} | Raw: {text[:100]}...")
+            print(f"AI Pest Parse Error: {e} | Raw: {text[:50]}...")
             return []
     except Exception as e:
-        print(f"AI Pest Error: {e}")
+        print(f"AI Pest General Error: {e}")
         return []
 
 def analyze_market_prices_with_ai(crop_type):
@@ -228,40 +225,36 @@ def analyze_market_prices_with_ai(crop_type):
         model = genai.GenerativeModel("gemini-1.5-flash")
         
         prompt = f"""
-        You are an agricultural market analyst. 
-        Generate or estimate the current wholesale market price trend for {crop_type} (US Market) for the last 7 days.
-        Base this on your knowledge of seasonal trends and current market conditions.
+        You are an agricultural market expert.
+        Estimate the wholesale prices ($/lb) for {crop_type} in the US market for the PAST 7 DAYS (ending today).
         
-        OUTPUT FORMAT (JSON list only, no markdown):
+        Return a JSON ARRAY of 7 objects.
+        Do NOT use markdown code blocks. Just return the raw JSON.
+        
+        JSON Structure:
         [
             {{
                 "Date": "YYYY-MM-DD",
                 "Price ($/lb)": 0.00 (float)
-            }},
-            ...
+            }}
         ]
-        
-        Rules:
-        - Return exactly 7 days ending today.
-        - Prices should be realistic per lb.
-        - Strict JSON output.
         """
         
         response = model.generate_content(prompt)
         text = response.text.strip()
         
         try:
+            # Remove any markdown wrapping if present
+            text = text.replace("```json", "").replace("```", "").strip()
+            
             import re
             match = re.search(r'\[.*\]', text, re.DOTALL)
             if match:
-                json_str = match.group()
-                return json.loads(json_str)
-            else:
-                 cleaned = text.replace("```json", "").replace("```", "").strip()
-                 return json.loads(cleaned)
+                return json.loads(match.group())
+            return json.loads(text)
         except Exception as e:
-            print(f"AI Market Parse Error: {e}")
+            print(f"AI Market Parse Error: {e} | Raw: {text[:50]}...")
             return []
     except Exception as e:
-        print(f"AI Market Error: {e}")
+        print(f"AI Market General Error: {e}")
         return []

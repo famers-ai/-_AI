@@ -125,7 +125,10 @@ def calculate_weekly_pest_risk(lat, lon, crop_type):
             # Try to match rain data if dates align
             if i < len(daily['precipitation_sum']):
                  item["Rain (in)"] = daily['precipitation_sum'][i]
-        return pd.DataFrame(ai_results)
+        
+        df_ai = pd.DataFrame(ai_results)
+        df_ai['Source'] = "AI Analysis (Gemini 1.5)"
+        return df_ai
 
     # Fallback to Rule-based if AI fails or no key
     max_temps = daily.get('temperature_2m_max', [])

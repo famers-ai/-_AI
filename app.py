@@ -58,10 +58,14 @@ st.markdown("""
     }
 
     /* Hide Streamlit Branding */
+    /* Hide Streamlit Branding */
     #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stDeployButton {display:none;}
+    footer {display: none !important;}
+    header {visibility: hidden !important;}
+    [data-testid="stToolbar"] {visibility: hidden !important;}
+    [data-testid="stDecoration"] {display: none !important;}
+    [data-testid="stStatusWidget"] {display: none !important;}
+    .stDeployButton {display:none !important;}
     
     /* Custom Metric Card */
     .metric-card {

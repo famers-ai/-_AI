@@ -112,6 +112,90 @@ def calculate_pest_risk(weather_data, crop_type):
     return {"level": risk_level, "pest": pest_name, "prob": int(probability)}
 
 @st.cache_data(ttl=3600)
+def fetch_7day_weather(lat, lon):
+    """
+    Fetches 7-day forecast for risk modeling.
+    """
+    try:
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,precipitation_sum&temperature_unit=fahrenheit&precipitation_unit=inch&wind_speed_unit=mph&timezone=auto"
+        response = requests.get(url)
+        data = response.json()
+        return data.get('daily', {})
+    except Exception as e:
+        print(f"Error forecast: {e}")
+        return {}
+
+def calculate_weekly_pest_risk(lat, lon, crop_type):
+    """
+    Generates a 7-day risk profile based on future weather.
+    """
+    daily = fetch_7day_weather(lat, lon)
+    if not daily:
+        return pd.DataFrame() # Empty if failed
+    
+    dates = daily.get('time', [])
+    max_temps = daily.get('temperature_2m_max', [])
+    min_temps = daily.get('temperature_2m_min', [])
+    humidities = daily.get('relative_humidity_2m_mean', [])
+    rains = daily.get('precipitation_sum', [])
+    
+    risk_data = []
+    
+    for i in range(len(dates)):
+        date = dates[i]
+        t_max = max_temps[i]
+        t_min = min_temps[i]
+        hum = humidities[i]
+        rain = rains[i]
+        avg_temp = (t_max + t_min) / 2
+        
+        # Calculate Logic
+        risk_score = 10 # Base risk
+        risk_detail = "Low Risk"
+        primary_pest = "None"
+        
+        # --- Logic: Strawberries ---
+        if crop_type == "Strawberries":
+            # Gray Mold (Botrytis): Cold/Mild (55-75F) + Wet (Rain or High Humidity)
+            if 55 <= avg_temp <= 75 and (rain > 0.05 or hum > 85):
+                risk_score = 90
+                risk_detail = "High Risk: Botrytis (Gray Mold)"
+                primary_pest = "Gray Mold"
+            # Mites: Hot (>80F) + Dry (Hum < 50)
+            elif t_max > 80 and hum < 50:
+                risk_score = 75
+                risk_detail = "High Risk: Spider Mites"
+                primary_pest = "Spider Mites"
+        
+        # --- Logic: Tomatoes ---
+        elif crop_type == "Tomatoes":
+            # Late Blight: Cool Nights + Humid
+            if 50 <= avg_temp <= 70 and hum > 90:
+                risk_score = 95
+                risk_detail = "Critical: Late Blight Alert"
+                primary_pest = "Late Blight"
+                
+        # --- Logic: Peppers ---
+        elif crop_type == "Peppers":
+            # Bacterial Spot: Hot + Wet
+            if t_max > 80 and rain > 0.1:
+                risk_score = 80
+                risk_detail = "High Risk: Bacterial Spot"
+                primary_pest = "Bacterial Spot"
+                
+        risk_data.append({
+            "Date": date,
+            "Risk Score": risk_score,
+            "Condition": risk_detail,
+            "Pest": primary_pest,
+            "Rain (in)": rain,
+            "Humidity (%)": hum,
+            "Temp (F)": avg_temp
+        })
+        
+    return pd.DataFrame(risk_data)
+
+@st.cache_data(ttl=3600)
 def fetch_market_prices(crop_type):
     """
     Fetches wholesale market prices.

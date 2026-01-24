@@ -176,35 +176,28 @@ app_crop_type = selected_crop # Alias
 
 auto_refresh = st.sidebar.checkbox("Auto-refresh Data", value=False)
 
+# Fetch Data (Real-time based on location) - MOVED UP for Virtual Sensor Logic
+weather = fetch_weather_data(lat=selected_coords[0], lon=selected_coords[1])
+
 st.sidebar.divider()
 st.sidebar.subheader("🌡️ Indoor Environment")
-st.sidebar.caption("Override sensor data for analysis.")
+st.sidebar.caption("Auto-estimated from outdoor weather (Virtual Sensor). Adjust if needed.")
 
-# Default values based on typical ideal conditions
-indoor_temp = st.sidebar.number_input("Indoor Temp (°F)", min_value=32.0, max_value=120.0, value=72.0, step=0.5)
-indoor_humidity = st.sidebar.number_input("Indoor Humidity (%)", min_value=10.0, max_value=100.0, value=65.0, step=1.0)
+# Virtual Sensor Logic: Estimate Indoor mostly based on Outdoor
+# Greenhouse Effect: +10F during day, +5F at night (simplified to +8F avg)
+# Transpiration: +10% higher humidity than outside
+estimated_temp = weather['temperature'] + 8.0
+estimated_hum = min(100.0, weather['humidity'] + 10.0)
+
+indoor_temp = st.sidebar.number_input("Indoor Temp (°F)", min_value=32.0, max_value=120.0, value=float(estimated_temp), step=0.5)
+indoor_humidity = st.sidebar.number_input("Indoor Humidity (%)", min_value=10.0, max_value=100.0, value=float(estimated_hum), step=1.0)
 
 indoor_weather = {
     "temperature": indoor_temp,
     "humidity": indoor_humidity,
     "rain": 0.0,  # Indoor, so no rain
-    "wind_speed": 0.0 # Assume calm indoors or handle via fan setting later
+    "wind_speed": 0.0 # Assume calm indoors
 }
-
-st.sidebar.divider()
-st.sidebar.info(f"💾 Settings Saved: **{selected_crop}**")
-
-# --- Legal & Disclaimer ---
-with st.sidebar.expander("⚖️ Legal & Privacy", expanded=False):
-    st.caption("""
-    **Disclaimer:** ForHuman AI provides insights for reference only. It is not a substitute for professional agricultural advice. 
-    We are not liable for crop loss or damages resulting from reliance on these results.
-    
-    **Data Privacy:** Uploaded images are analyzed by Google Gemini. Verification data helps improve the model.
-    """)
-
-# Fetch Data (Real-time based on location)
-weather = fetch_weather_data(lat=selected_coords[0], lon=selected_coords[1])
 
 st.title(f"ForHuman AI: Smart Farm Monitor ({app_crop_type})")
 st.caption("Powered by Google Gemini 3 • Open-Meteo Weather API")
@@ -221,9 +214,10 @@ with tab2:
     render_ai_doctor()
 
 # --- TAB 3: PEST FORECAST ---
+# --- TAB 3: PEST FORECAST ---
 with tab3:
-    st.info(f"💡 Analysis based on Manual Indoor Settings (Temp: {indoor_temp}°F, Humidity: {indoor_humidity}%)")
-    render_pest_forecast(indoor_weather, app_crop_type)
+    # Pass lat/lon for 7-day forecast
+    render_pest_forecast(indoor_weather, app_crop_type, selected_coords[0], selected_coords[1])
 
 # --- TAB 4: MARKET PRICES ---
 with tab4:

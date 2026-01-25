@@ -29,15 +29,33 @@ def fetch_weather_data(lat=37.7749, lon=-122.4194):
 @lru_cache(maxsize=128)
 def get_coordinates_from_city(city_name):
     try:
-        url = f"https://geocoding-api.open-meteo.com/v1/search?name={city_name}&count=1&language=en&format=json"
-        response = requests.get(url, timeout=5)
+        url = "https://geocoding-api.open-meteo.com/v1/search"
+        params = {
+            "name": city_name,
+            "count": 5,
+            "language": "en",
+            "format": "json"
+        }
+        response = requests.get(url, params=params, timeout=5)
         data = response.json()
-        if "results" in data:
-            result = data["results"][0]
-            lat = result.get("latitude")
-            lon = result.get("longitude")
-            country = result.get("country", "")
-            return lat, lon, f"{result['name']}, {country}"
+        
+        if "results" in data and data["results"]:
+            # Prefer match with highest population if available, or just first
+            results = data["results"]
+            # specific fix for "New York" -> usually first is NYC, but let's be safe
+            best_match = results[0]
+            
+            lat = best_match.get("latitude")
+            lon = best_match.get("longitude")
+            country = best_match.get("country", "")
+            state = best_match.get("admin1", "")
+            
+            # Formatting name nicely
+            location_name = f"{best_match['name']}"
+            if state: location_name += f", {state}"
+            elif country: location_name += f", {country}"
+            
+            return lat, lon, location_name
     except Exception:
         pass
     return None, None, None

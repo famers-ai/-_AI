@@ -21,8 +21,8 @@ export interface DashboardData {
     crop: string;
 }
 
-export async function fetchDashboardData(): Promise<DashboardData> {
-    const res = await fetch(`${API_BASE_url}/dashboard?crop_type=Strawberries`);
+export async function fetchDashboardData(city: string = "San Francisco"): Promise<DashboardData> {
+    const res = await fetch(`${API_BASE_url}/dashboard?crop_type=Strawberries&city=${encodeURIComponent(city)}`);
     if (!res.ok) {
         throw new Error("Failed to fetch dashboard data");
     }

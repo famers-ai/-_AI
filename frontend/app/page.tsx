@@ -2,25 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { fetchDashboardData, fetchAIAnalysis, type DashboardData } from "@/lib/api";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, MapPin, Search } from "lucide-react";
 import clsx from "clsx";
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [city, setCity] = useState("San Francisco");
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [tempCity, setTempCity] = useState(city);
 
   // AI State
   const [analyzing, setAnalyzing] = useState(false);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+
 
   async function loadData() {
     setLoading(true);
     try {
-      const dashboardData = await fetchDashboardData();
+      const dashboardData = await fetchDashboardData(city);
       setData(dashboardData);
     } catch (e) {
       console.error(e);
@@ -30,6 +31,20 @@ export default function Dashboard() {
       setLoading(false);
     }
   }
+
+  function handleCitySubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setCity(tempCity);
+    setIsEditingLocation(false);
+
+  }
+
+  // Effect to reload when city changes (skip initial load as it's handled by empty dep array effect, 
+  // but actually let's just combine them)
+  useEffect(() => {
+    loadData();
+  }, [city]);
+
 
   async function handleAnalyze() {
     if (!data) return;
@@ -72,7 +87,7 @@ export default function Dashboard() {
         </div>
         <h3 className="text-lg font-semibold text-slate-700">Unable to Connect</h3>
         <p className="text-sm mt-2 mb-6">The SmartFarm Backend seems to be offline.</p>
-        <button onClick={loadData} className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors">
+        <button onClick={() => loadData()} className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors">
           Retry Connection
         </button>
       </div>
@@ -82,16 +97,47 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
             Dashboard
           </h2>
           <p className="text-slate-500">Real-time Farm Monitoring & AI Insights</p>
         </div>
-        <button onClick={loadData} className="text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
-          <RefreshCw size={14} /> Refresh
-        </button>
+
+        <div className="flex items-center gap-2">
+          {isEditingLocation ? (
+            <form onSubmit={handleCitySubmit} className="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
+              <Search size={14} className="text-slate-400" />
+              <input
+                type="text"
+                value={tempCity}
+                onChange={(e) => setTempCity(e.target.value)}
+                className="text-sm outline-none text-slate-700 w-32"
+                placeholder="Enter City..."
+                autoFocus
+              />
+              <button type="submit" className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-medium hover:bg-emerald-200">
+                Set
+              </button>
+            </form>
+          ) : (
+            <button
+              onClick={() => {
+                setTempCity(city);
+                setIsEditingLocation(true);
+              }}
+              className="flex items-center gap-1.5 text-sm bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm hover:border-emerald-200 hover:text-emerald-700 transition-all group"
+            >
+              <MapPin size={14} className="text-slate-400 group-hover:text-emerald-500" />
+              <span className="font-medium text-slate-600 group-hover:text-emerald-700">{data.location.name}</span>
+            </button>
+          )}
+
+          <button onClick={() => loadData()} className="text-sm text-slate-400 hover:text-emerald-600 font-medium flex items-center gap-1 px-2">
+            <RefreshCw size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Main Grid */}

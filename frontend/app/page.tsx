@@ -53,8 +53,13 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center text-slate-400">
-        <Loader2 className="animate-spin mr-2" /> Loading Farm Data...
+      <div className="flex flex-col h-[50vh] items-center justify-center text-slate-400">
+        <Loader2 className="animate-spin mb-4" size={40} />
+        <h3 className="text-lg font-medium text-slate-700">Connecting to Farm Server...</h3>
+        <p className="text-sm text-slate-400 mt-2 text-center max-w-md">
+          This may take up to 60 seconds if the server is waking up from sleep mode.
+          <br />(Free tier limitation)
+        </p>
       </div>
     );
   }

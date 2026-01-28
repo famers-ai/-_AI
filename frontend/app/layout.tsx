@@ -22,7 +22,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-slate-50 text-slate-900 antialiased`}>
         <div className="flex min-h-screen">
           <Sidebar />
-          <main className="flex-1 p-8 overflow-y-auto h-screen relative">
+          <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative">
             <div className="max-w-7xl mx-auto">
               <Header />
               {children}

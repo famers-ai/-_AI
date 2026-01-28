@@ -5,6 +5,7 @@ import { fetchPestForecast } from "@/lib/api";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CloudRain, AlertOctagon, Info } from "lucide-react";
 import clsx from "clsx";
+import { formatToUSDate } from "@/lib/utils";
 
 interface ForecastData {
     Date: string;
@@ -60,10 +61,11 @@ export default function PestForecastPage() {
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="Date" tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { weekday: 'short' })} />
+                        <XAxis dataKey="Date" tickFormatter={(str) => formatToUSDate(str, { weekday: 'short' })} />
                         <YAxis />
                         <Tooltip
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            labelFormatter={(label) => formatToUSDate(label, { weekday: 'long', month: 'short', day: 'numeric' })}
                         />
                         <Area
                             type="monotone"
@@ -82,7 +84,7 @@ export default function PestForecastPage() {
                 {data.slice(0, 4).map((day, i) => (
                     <div key={i} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                         <p className="text-sm text-slate-400 font-medium mb-1">
-                            {new Date(day.Date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+                            {formatToUSDate(day.Date, { weekday: 'long', month: 'short', day: 'numeric' })}
                         </p>
                         <div className="flex justify-between items-center mb-2">
                             <span className={clsx("px-2 py-1 rounded-md text-xs font-bold",

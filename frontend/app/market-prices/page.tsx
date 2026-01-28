@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchMarketPrices } from "@/lib/api";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, DollarSign, Info } from "lucide-react";
+import { formatToUSDate } from "@/lib/utils";
 
 interface PriceData {
     Date: string;
@@ -51,9 +52,13 @@ export default function MarketPricesPage() {
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={data}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="Date" tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { weekday: 'short' })} />
+                            <XAxis dataKey="Date" tickFormatter={(str) => formatToUSDate(str, { weekday: 'short' })} />
                             <YAxis domain={['auto', 'auto']} tickFormatter={(val) => `$${val}`} />
-                            <Tooltip contentStyle={{ borderRadius: '12px' }} formatter={(val) => [`$${val}`, "Price"]} />
+                            <Tooltip
+                                contentStyle={{ borderRadius: '12px' }}
+                                formatter={(val) => [`$${val}`, "Price"]}
+                                labelFormatter={(label) => formatToUSDate(label, { weekday: 'long', month: 'short', day: 'numeric' })}
+                            />
                             <Line type="monotone" dataKey="Price ($/lb)" stroke="#059669" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                         </LineChart>
                     </ResponsiveContainer>

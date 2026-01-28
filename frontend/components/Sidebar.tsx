@@ -2,17 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Stethoscope, Sprout, TrendingUp, FileText, Mic, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import clsx from "clsx";
 
-const menuItems = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "AI Crop Doctor", href: "/crop-doctor", icon: Stethoscope },
-    { name: "Pest Forecast", href: "/pest-forecast", icon: Sprout },
-    { name: "Market Prices", href: "/market-prices", icon: TrendingUp },
-    { name: "Weekly Report", href: "/reports", icon: FileText },
-    { name: "Voice Log", href: "/voice-log", icon: Mic },
-];
+import { menuItems } from "@/lib/menu-items";
 
 export function Sidebar() {
     const pathname = usePathname();

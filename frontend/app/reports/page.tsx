@@ -44,23 +44,51 @@ interface ChartData {
 }
 
 export default function WeeklyReportPage() {
-    const [summary, setSummary] = useState<WeeklySummary>({
-        avgVpd: 0.68,
-        avgTemp: 67.2,
-        avgHumidity: 68,
-        pestRisk: 12,
-        vpdChange: 5,
-        tempChange: -2,
-        humidityChange: 3,
-        pestChange: 3,
-    });
+    const [reportData, setReportData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const [chartData, setChartData] = useState<ChartData>({
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        vpd: [0.65, 0.68, 0.70, 0.67, 0.69, 0.68, 0.67],
-        temperature: [66, 67, 68, 67, 68, 67, 66],
-        humidity: [70, 68, 66, 69, 67, 68, 70],
-    });
+    useEffect(() => {
+        async function loadReport() {
+            try {
+                const { fetchWeeklyReport } = await import('@/lib/api');
+                const data = await fetchWeeklyReport();
+                setReportData(data);
+            } catch (err) {
+                console.error("Failed to load report", err);
+                setError("Failed to load weekly report. Please try again.");
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadReport();
+    }, []);
+
+    if (loading) {
+        return <div className="p-8 text-center text-gray-500">Generating Weekly Report...</div>;
+    }
+
+    if (error) {
+        return <div className="p-8 text-center text-red-500">{error}</div>;
+    }
+
+    if (!reportData || !reportData.has_data) {
+        return (
+            <div className="p-12 text-center max-w-2xl mx-auto mt-10 bg-white rounded-xl shadow-sm border border-dashed border-gray-300">
+                <div className="text-4xl mb-4">📊</div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Not Enough Data</h2>
+                <p className="text-gray-600 mb-6">
+                    {reportData?.message || "We need at least one day of sensor data to generate a weekly report."}
+                </p>
+                <div className="bg-blue-50 text-blue-800 p-4 rounded-lg inline-block text-left text-sm">
+                    <strong>Suggestion:</strong><br />
+                    {reportData?.suggestion || "Go to the Dashboard and record your first data point."}
+                </div>
+            </div>
+        );
+    }
+
+    const { summary, chartData, insights, highlights } = reportData;
 
     const vpdChartData = {
         labels: chartData.labels,
@@ -104,24 +132,11 @@ export default function WeeklyReportPage() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: {
-                position: 'top' as const,
-            },
+            legend: { position: 'top' as const },
         },
         scales: {
-            y: {
-                type: 'linear' as const,
-                display: true,
-                position: 'left' as const,
-            },
-            y1: {
-                type: 'linear' as const,
-                display: true,
-                position: 'right' as const,
-                grid: {
-                    drawOnChartArea: false,
-                },
-            },
+            y: { type: 'linear' as const, display: true, position: 'left' as const },
+            y1: { type: 'linear' as const, display: true, position: 'right' as const, grid: { drawOnChartArea: false } },
         },
     };
 
@@ -142,8 +157,11 @@ export default function WeeklyReportPage() {
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">Weekly Report</h1>
                 <p className="text-gray-600">
-                    Summary of your farm's performance over the past 7 days
+                    Analysis period: {reportData.period.start} to {reportData.period.end}
                 </p>
+                <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    Data Completeness: {reportData.dataQuality.completeness}
+                </div>
             </div>
 
             {/* Weekly Summary Cards */}
@@ -156,9 +174,9 @@ export default function WeeklyReportPage() {
                         </span>
                     </div>
                     <div className="text-3xl font-bold text-gray-800">
-                        {summary.avgVpd.toFixed(2)} <span className="text-lg text-gray-500">kPa</span>
+                        {summary.avgVpd} <span className="text-lg text-gray-500">kPa</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">Optimal range: 0.4-1.2 kPa</p>
+                    <p className="text-xs text-gray-500 mt-2">Optimal range: {summary.optimalVpdRange}</p>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
@@ -169,7 +187,7 @@ export default function WeeklyReportPage() {
                         </span>
                     </div>
                     <div className="text-3xl font-bold text-gray-800">
-                        {summary.avgTemp.toFixed(1)} <span className="text-lg text-gray-500">°F</span>
+                        {summary.avgTemp} <span className="text-lg text-gray-500">°F</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">Target: 65-75°F</p>
                 </div>
@@ -191,13 +209,13 @@ export default function WeeklyReportPage() {
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="text-sm font-medium text-gray-600">Pest Risk</h3>
                         <span className={`text-sm font-semibold ${getChangeColor(summary.pestChange)}`}>
-                            {getChangeIcon(summary.pestChange)} {Math.abs(summary.pestChange)}%
+                            -- %
                         </span>
                     </div>
                     <div className="text-3xl font-bold text-gray-800">
                         {summary.pestRisk} <span className="text-lg text-gray-500">%</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">Low risk threshold</p>
+                    <p className="text-xs text-gray-500 mt-2">Ai Risk Analysis</p>
                 </div>
             </div>
 
@@ -227,44 +245,20 @@ export default function WeeklyReportPage() {
                     AI Insights & Recommendations
                 </h2>
                 <div className="space-y-3">
-                    <div className="flex items-start">
-                        <span className="text-green-600 text-xl mr-3">✅</span>
-                        <div>
-                            <p className="font-medium text-gray-800">VPD levels optimal for growth</p>
-                            <p className="text-sm text-gray-600">
-                                Your average VPD of 0.68 kPa is within the ideal range for most crops.
-                            </p>
+                    {insights.map((insight: any, index: number) => (
+                        <div key={index} className="flex items-start bg-white/50 p-2 rounded">
+                            <span className="text-xl mr-3">
+                                {insight.type === 'warning' ? '⚠️' :
+                                    insight.type === 'alert' ? '🚨' :
+                                        insight.type === 'success' ? '✅' : '💡'}
+                            </span>
+                            <div>
+                                <p className="font-medium text-gray-800">{insight.title}</p>
+                                <p className="text-sm text-gray-600">{insight.message}</p>
+                                <p className="text-xs text-slate-500 mt-1 italic">Recommendation: {insight.recommendation}</p>
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex items-start">
-                        <span className="text-yellow-600 text-xl mr-3">⚠️</span>
-                        <div>
-                            <p className="font-medium text-gray-800">Slight temperature drop detected</p>
-                            <p className="text-sm text-gray-600">
-                                Temperature decreased by 2% this week. Monitor heating systems.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-start">
-                        <span className="text-blue-600 text-xl mr-3">💡</span>
-                        <div>
-                            <p className="font-medium text-gray-800">
-                                Consider adjusting humidity control
-                            </p>
-                            <p className="text-sm text-gray-600">
-                                Humidity increased by 3%. Ensure proper ventilation to prevent mold.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-start">
-                        <span className="text-green-600 text-xl mr-3">📊</span>
-                        <div>
-                            <p className="font-medium text-gray-800">Pest risk remains low</p>
-                            <p className="text-sm text-gray-600">
-                                Current conditions are unfavorable for pest development. Continue monitoring.
-                            </p>
-                        </div>
-                    </div>
+                    ))}
                 </div>
             </div>
 
@@ -273,34 +267,18 @@ export default function WeeklyReportPage() {
                 <h2 className="text-xl font-semibold text-gray-800 mb-4">Weekly Highlights</h2>
                 <div className="space-y-4">
                     <div className="border-l-4 border-green-500 pl-4">
-                        <p className="font-medium text-gray-800">Best Day: Wednesday</p>
+                        <p className="font-medium text-gray-800">Best Day: {highlights.bestDay.date}</p>
                         <p className="text-sm text-gray-600">
-                            Optimal VPD (0.70 kPa) and temperature (68°F) achieved
+                            VPD: {highlights.bestDay.vpd} kPa - {highlights.bestDay.reason}
                         </p>
                     </div>
                     <div className="border-l-4 border-yellow-500 pl-4">
-                        <p className="font-medium text-gray-800">Attention Needed: Monday & Sunday</p>
+                        <p className="font-medium text-gray-800">Attention Needed: {highlights.attentionDay.date}</p>
                         <p className="text-sm text-gray-600">
-                            Higher humidity levels (70%) detected. Increase ventilation.
-                        </p>
-                    </div>
-                    <div className="border-l-4 border-blue-500 pl-4">
-                        <p className="font-medium text-gray-800">Data Quality: Excellent</p>
-                        <p className="text-sm text-gray-600">
-                            100% sensor uptime this week. All readings within expected ranges.
+                            VPD: {highlights.attentionDay.vpd} kPa - {highlights.attentionDay.reason}
                         </p>
                     </div>
                 </div>
-            </div>
-
-            {/* Export Options */}
-            <div className="mt-8 flex justify-end space-x-4">
-                <button className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                    Export as PDF
-                </button>
-                <button className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                    Email Report
-                </button>
             </div>
         </div>
     );

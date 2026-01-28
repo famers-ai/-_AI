@@ -14,17 +14,19 @@ def fetch_weather_data(lat=37.7749, lon=-122.4194):
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch"
         response = requests.get(url, timeout=5)
+        response.raise_for_status()
         data = response.json()
         current = data.get('current', {})
         return {
-            "temperature": current.get('temperature_2m', 68),
-            "humidity": current.get('relative_humidity_2m', 50),
+            "temperature": current.get('temperature_2m'),
+            "humidity": current.get('relative_humidity_2m'),
             "rain": current.get('rain', 0.0),
             "wind_speed": current.get('wind_speed_10m', 0.0)
         }
     except Exception as e:
         print(f"Error fetching weather: {e}")
-        return {"temperature": 70, "humidity": 55, "rain": 0.0, "wind_speed": 5.0}
+        # STRICT REAL DATA POLICY: Return None on failure, do not fake data
+        return None
 
 @lru_cache(maxsize=128)
 def get_coordinates_from_city(city_name):
@@ -198,27 +200,6 @@ def fetch_market_prices(crop_type):
         df['Source'] = "AI Market Analysis (Gemini 1.5)"
         return df
 
-    # Fallback Simulation
-    source = "Simulated (Historical Avg)"
-    
-    current_month = datetime.now().month
-    if crop_type == "Strawberries":
-        base = 2.50
-    else:
-        base = 1.50
-
-    current_price = base
-    days = []
-    prices = [] 
-    
-    for i in range(7):
-        date = datetime.now() - timedelta(days=6-i)
-        days.append(date.strftime("%Y-%m-%d"))
-        noise = random.uniform(-0.1, 0.1)
-        daily_price = max(0.5, current_price + noise)
-        prices.append(round(daily_price, 2))
-        current_price = daily_price
-
-    df = pd.DataFrame({"Date": days, "Price ($/lb)": prices})
-    df['Source'] = source
-    return df
+    # STRICT REAL DATA POLICY: No simulation allowed
+    # Return empty if AI fails and no real API is available
+    return pd.DataFrame(columns=["Date", "Price ($/lb)", "Source"])

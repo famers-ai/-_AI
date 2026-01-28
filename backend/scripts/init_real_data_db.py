@@ -27,6 +27,8 @@ def init_real_data_schema():
             location_lon REAL,
             location_name TEXT,
             crop_type TEXT DEFAULT 'Strawberries',
+            is_terms_agreed BOOLEAN DEFAULT 0,
+            terms_agreed_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )

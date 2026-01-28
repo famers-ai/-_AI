@@ -76,3 +76,35 @@ export async function fetchMarketPrices(crop: string) {
     if (!res.ok) throw new Error("Failed to fetch market prices");
     return res.json();
 }
+
+export async function fetchUserProfile() {
+    const res = await fetch(`${API_BASE_url}/users/me`);
+    if (!res.ok) throw new Error("Failed to fetch user profile");
+    return res.json();
+}
+
+export async function updateUserTerms(agreed: boolean) {
+    const res = await fetch(`${API_BASE_url}/users/me/terms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agreed }),
+    });
+    if (!res.ok) throw new Error("Failed to update terms status");
+    return res.json();
+}
+
+export async function recordSensorData(data: any) {
+    const res = await fetch(`${API_BASE_url}/sensors/record`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to record sensor data");
+    return res.json();
+}
+
+export async function fetchWeeklyReport() {
+    const res = await fetch(`${API_BASE_url}/reports/weekly`);
+    if (!res.ok) throw new Error("Failed to fetch weekly report");
+    return res.json();
+}

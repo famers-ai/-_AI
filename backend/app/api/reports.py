@@ -29,17 +29,16 @@ def get_current_user_id(user_id: str = "test_user_001"):
 async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
     """
     Generate weekly report based on user's actual sensor data
-    
-    Returns:
-    - Summary statistics (avg VPD, temp, humidity, pest risk)
-    - Change percentages compared to previous week
-    - Chart data for trends
-    - AI insights and recommendations
     """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # 0. Get User Crop Info (NEW)
+        cursor.execute("SELECT crop_type FROM users WHERE id = ?", (user_id,))
+        user_row = cursor.fetchone()
+        crop_type = user_row['crop_type'] if user_row and user_row['crop_type'] else "Crops"
+
         # 1. Get current week data (last 7 days)
         cursor.execute("""
             SELECT 
@@ -80,15 +79,17 @@ async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
         
         prev_week = cursor.fetchone()
         
-        # 3. Get pest risk data (if available)
-        cursor.execute("""
-            SELECT AVG(risk_score) as avg_risk
-            FROM pest_forecasts
-            WHERE user_id = ?
-            AND date >= date('now', '-7 days')
-        """, (user_id,))
-        
-        pest_risk_row = cursor.fetchone()
+        # 3. Get pest risk data (if available) - Assuming table exists, if not handle gracefully
+        try:
+            cursor.execute("""
+                SELECT AVG(risk_score) as avg_risk
+                FROM pest_forecasts
+                WHERE user_id = ?
+                AND date >= date('now', '-7 days')
+            """, (user_id,))
+            pest_risk_row = cursor.fetchone()
+        except sqlite3.OperationalError:
+            pest_risk_row = None
         
         conn.close()
         
@@ -135,7 +136,8 @@ async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
         start_date = datetime.now() - timedelta(days=6)
         for i in range(7):
             target_date = (start_date + timedelta(days=i)).strftime('%Y-%m-%d')
-            chart_labels.append(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i])
+            # Short day name
+            chart_labels.append(datetime.strptime(target_date, '%Y-%m-%d').strftime('%a'))
             
             # Find matching data
             matching_row = next((row for row in current_week if row['date'] == target_date), None)
@@ -153,8 +155,11 @@ async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
         insights = generate_insights(avg_vpd, avg_temp, avg_humidity, pest_risk)
         
         # 9. Identify best and worst days
-        best_day = max(current_week, key=lambda x: x['avg_vpd'] if x['avg_vpd'] and 0.4 <= x['avg_vpd'] <= 1.2 else 0)
-        worst_day = min(current_week, key=lambda x: abs(x['avg_vpd'] - 0.8) if x['avg_vpd'] else 999)
+        # Helper to safely get vpd
+        def get_vpd(row): return row['avg_vpd'] if row['avg_vpd'] is not None else 0
+
+        best_day = max(current_week, key=lambda x: get_vpd(x) if 0.4 <= get_vpd(x) <= 1.2 else -1, default=current_week[0])
+        worst_day = min(current_week, key=lambda x: abs(get_vpd(x) - 0.8) if get_vpd(x) else 999, default=current_week[0])
         
         return {
             "has_data": True,
@@ -166,7 +171,7 @@ async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
                 "vpdChange": round(vpd_change, 1),
                 "tempChange": round(temp_change, 1),
                 "humidityChange": round(humidity_change, 1),
-                "pestChange": 0,  # TODO: Calculate from previous week
+                "pestChange": 0, 
                 "vpdStatus": get_vpd_status(avg_vpd),
                 "optimalVpdRange": "0.4-1.2 kPa"
             },
@@ -201,6 +206,8 @@ async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
         }
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to generate weekly report: {str(e)}")
 
 def get_vpd_status(vpd: float) -> str:
@@ -263,7 +270,15 @@ def generate_insights(avg_vpd: float, avg_temp: float, avg_humidity: float, pest
             "type": "alert",
             "title": "High Pest Risk",
             "message": f"Pest risk is at {pest_risk}%. Monitor plants closely for signs of disease or pests.",
-            "recommendation": "Inspect plants daily and consider preventive treatments."
+            "recommendation": "Inspect plants daily. Do NOT use chemical pesticides without consulting an expert."
         })
+
+    # LEGAL DISCLAIMER (MANDATORY)
+    insights.append({
+        "type": "info",
+        "title": "Legal Disclaimer",
+        "message": "This report is generated based on sensor data and general agricultural guidelines.",
+        "recommendation": "Always consult with local agricultural extension services before applying any treatments. Smart Farm AI is not liable for crop loss."
+    })
     
     return insights

@@ -1,141 +1,44 @@
 # 🚀 Smart Farm AI - 실제 데이터 시스템 전환 진행 상황
 
 **업데이트 일자**: 2026-01-27  
-**작업 상태**: Phase 1 진행 중 (40% 완료)
+**작업 상태**: Phase 1 진행 중 (60% 완료 - 법적 안전장치 구축 완료)
+
+---
+
+## 🛡️ 법적 리스크 대응 조치 (Legal Compliance)
+
+사용자 요청에 따라 **법적 리스크 제로(Zero)**를 목표로 강력한 안전장치를 구축했습니다.
+
+### 1. AI 응답 통제 (AI Safety Guard) ✅
+- **화학 약품 추천 원천 차단**: 시스템 프롬프트 레벨에서 특정 농약 제품명 언급을 금지했습니다.
+- **면책 조항(Disclaimer) 강제화**: 모든 AI 조언 하단에 "전문가와 상의하십시오"라는 문구가 자동으로 삽입됩니다.
+- **물리적 방제 우선**: 환기, 온도 조절 등 비화학적 방법만 제안하도록 AI 페르소나를 조정했습니다.
+
+### 2. 약관 동의 시스템 (Mandatory Consent) ✅
+- **Terms of Service**: 서비스 이용 약관 페이지 생성 (`/terms`)
+- **Privacy Policy**: 개인정보 처리방침 페이지 생성 (`/privacy`)
+- **기능 잠금(Feature Guard)**:
+  - "Analyze Conditions" (AI 분석)
+  - "Record Data" (데이터 입력)
+  - 위 기능 사용 시, 약관 미동의 사용자는 **강제로 동의 모달**이 표시됩니다.
+  - 동의 기록은 데이터베이스 `users` 테이블에 영구 저장됩니다.
 
 ---
 
 ## ✅ 완료된 작업
 
 ### 1. 데이터베이스 스키마 생성 ✅
-**파일**: `backend/scripts/init_real_data_db.py`
+- `backend/scripts/init_real_data_db.py` 업데이트
+- `is_terms_agreed`, `terms_agreed_at` 필드 추가
 
-**생성된 테이블**:
-- ✅ `users` - 사용자 프로필 (농장 정보, 위치, 작물 종류)
-- ✅ `sensor_readings` - 센서 데이터 (온도, 습도, VPD, 토양 수분)
-- ✅ `pest_incidents` - 병해충 발생 이력
-- ✅ `crop_diagnoses` - AI 작물 진단 이력
-- ✅ `voice_logs` - 음성 로그 (서버 저장용)
-- ✅ `market_price_cache` - 시장 가격 캐시
-- ✅ `pest_forecasts` - 병해충 예측 데이터
-- ✅ `user_preferences` - 사용자 설정
-- ✅ `data_reminders` - 데이터 입력 리마인더
+### 2. 백엔드 API 구현 ✅
+- `users` API 추가: 동의 상태 조회 및 업데이트
+- `ai_engine` 업데이트: 안전 프롬프트 적용
 
-**실행 결과**:
-```
-✅ Database schema initialized successfully
-✅ Sample user created: test@forhumanai.net
-📊 Database Tables: 14 tables created
-```
-
-### 2. 센서 데이터 API 구현 ✅
-**파일**: `backend/app/api/sensors.py`
-
-**엔드포인트**:
-- ✅ `POST /api/sensors/record` - 데이터 기록
-- ✅ `GET /api/sensors/latest` - 최신 데이터 조회
-- ✅ `GET /api/sensors/history` - 이력 조회 (주간 리포트용)
-- ✅ `GET /api/sensors/stats` - 통계 조회
-- ✅ `DELETE /api/sensors/delete/{id}` - 데이터 삭제
-
-**기능**:
-- ✅ 실시간 VPD 계산
-- ✅ 데이터 검증 (온도: -50~150°F, 습도: 0~100%)
-- ✅ 일별 평균 집계
-- ✅ 사용자별 데이터 분리
-
-### 3. Weekly Report API 구현 ✅
-**파일**: `backend/app/api/reports.py`
-
-**엔드포인트**:
-- ✅ `GET /api/reports/weekly` - 주간 리포트 생성
-
-**기능**:
-- ✅ 실제 사용자 데이터 기반 리포트
-- ✅ 전주 대비 변화율 계산
-- ✅ AI 인사이트 생성
-- ✅ 데이터 없을 경우 명확한 안내 메시지
-- ✅ 차트 데이터 준비 (7일 트렌드)
-- ✅ 최고/최악의 날 식별
-
-### 4. 백엔드 라우터 등록 ✅
-**파일**: `backend/app/main.py`
-
-**변경사항**:
-```python
-# 새로운 라우터 추가
-app.include_router(sensors.router, prefix="/api/sensors", tags=["Sensors"])
-app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
-```
-
-### 5. 데이터 입력 UI 컴포넌트 ✅
-**파일**: `frontend/components/DataInputModal.tsx`
-
-**기능**:
-- ✅ 온도, 습도, 토양 수분 입력
-- ✅ 메모 기능
-- ✅ 실시간 검증
-- ✅ 로딩 상태 표시
-- ✅ 에러 처리
-- ✅ 사용자 친화적 UI
-
----
-
-## 🚧 진행 중인 작업
-
-### 1. 대시보드 통합 (진행 예정)
-**목표**: 대시보드에 "Record Data" 버튼 추가
-
-**필요 작업**:
-```typescript
-// frontend/app/page.tsx
-import DataInputModal from '@/components/DataInputModal';
-
-// 1. 모달 상태 추가
-const [showDataInput, setShowDataInput] = useState(false);
-
-// 2. 플로팅 버튼 추가
-<button
-  onClick={() => setShowDataInput(true)}
-  className="fixed bottom-8 right-8 bg-green-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-green-700"
->
-  📊 Record Data
-</button>
-
-// 3. 모달 렌더링
-{showDataInput && (
-  <DataInputModal
-    onClose={() => setShowDataInput(false)}
-    onSubmit={handleDataSubmit}
-  />
-)}
-```
-
-### 2. Weekly Report 페이지 수정 (진행 예정)
-**목표**: 실제 데이터 기반으로 리포트 표시
-
-**필요 작업**:
-```typescript
-// frontend/app/reports/page.tsx
-useEffect(() => {
-  fetchWeeklyReport();
-}, []);
-
-const fetchWeeklyReport = async () => {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reports/weekly`);
-  const data = await response.json();
-  
-  if (data.has_data) {
-    setSummary(data.summary);
-    setChartData(data.chartData);
-  } else {
-    // "No Data" 상태 표시
-  }
-};
-```
-
-### 3. 데이터 리마인더 배너 (진행 예정)
-**목표**: 24시간 이상 데이터 미입력 시 알림
+### 3. 프론트엔드 컴포넌트 ✅
+- `TermsAgreementModal` 구현
+- 대시보드(`Dashboard`) 통합 완료
+- 플로팅 "Record Data" 버튼 추가
 
 ---
 
@@ -143,207 +46,24 @@ const fetchWeeklyReport = async () => {
 
 ### 우선순위 높음 (P0)
 
-1. ⏳ **대시보드 통합**
-   - 예상 시간: 2시간
-   - 파일: `frontend/app/page.tsx`
+1. ⏳ **백엔드 API 테스트** (옵션 2 진행 예정)
+   - 약관 동의 API 테스트
+   - AI 안전 응답 테스트 (화학약품 물어봐서 거절하는지 확인)
 
 2. ⏳ **Weekly Report 페이지 수정**
-   - 예상 시간: 3시간
-   - 파일: `frontend/app/reports/page.tsx`
+   - 실제 데이터 연동
+   - "No Data" → "부분 리포트" 로직 개선 (사용자 피드백 반영)
 
-3. ⏳ **"No Data" 상태 UI**
-   - 예상 시간: 2시간
-   - 파일: `frontend/app/reports/page.tsx`
-
-4. ⏳ **데이터 리마인더 배너**
-   - 예상 시간: 2시간
-   - 파일: `frontend/components/DataReminderBanner.tsx`
-
-5. ⏳ **사용자 인증 연동**
-   - 예상 시간: 4시간
-   - NextAuth.js 세션 → DB 사용자 매핑
-
-6. ⏳ **백엔드 테스트**
-   - 예상 시간: 3시간
-   - API 엔드포인트 테스트
-
-7. ⏳ **프론트엔드 테스트**
-   - 예상 시간: 2시간
-   - 데이터 입력 플로우 테스트
-
-**총 예상 시간**: 18시간 (약 2-3일)
+3. ⏳ **센서 데이터 수정 기능 추가**
+   - `PUT /api/sensors/{id}` API 구현 (사용자 피드백 반영)
 
 ---
 
-## 🎯 다음 단계 (Phase 2)
+## 🎯 다음 단계
 
-### 1. USDA API 연동
-- 실제 시장 가격 데이터
-- 예상 시간: 12시간
-
-### 2. 병해충 이력 기반 예측
-- 사용자 이력 + AI 분석
-- 예상 시간: 16시간
-
-### 3. Voice Log 서버 동기화
-- 로컬 스토리지 → 서버 저장
-- 예상 시간: 8시간
-
----
-
-## 📊 현재 vs 목표 비교
-
-### 현재 상태 (시뮬레이션)
-
-```typescript
-// ❌ 하드코딩된 데이터
-const [summary, setSummary] = useState({
-  avgVpd: 0.68,        // 고정값
-  avgTemp: 67.2,       // 고정값
-  avgHumidity: 68,     // 고정값
-  pestRisk: 12,        // 고정값
-});
-```
-
-**문제점**:
-- 모든 사용자에게 동일한 데이터 표시
-- 시간이 지나도 변화 없음
-- 실제 농장 상태 반영 안 됨
-
-### 목표 상태 (실제 데이터)
-
-```typescript
-// ✅ 실제 사용자 데이터
-const fetchWeeklyReport = async () => {
-  const response = await fetch('/api/reports/weekly');
-  const data = await response.json();
-  
-  if (data.has_data) {
-    setSummary(data.summary);  // 실제 계산된 값
-    setChartData(data.chartData);  // 실제 7일 데이터
-  } else {
-    // "데이터를 입력하세요" 메시지
-  }
-};
-```
-
-**장점**:
-- ✅ 사용자별 맞춤 데이터
-- ✅ 실시간 업데이트
-- ✅ 정직한 사용자 경험
-- ✅ 실제 의사결정에 도움
-
----
-
-## 🔄 사용자 플로우
-
-### 신규 사용자
-
-1. **회원가입/로그인**
-   - Google OAuth
-
-2. **온보딩**
-   - 농장 정보 입력 (이름, 위치, 작물)
-
-3. **첫 데이터 입력**
-   - "Record Data" 버튼 클릭
-   - 온도, 습도 입력
-
-4. **대시보드 확인**
-   - 실시간 VPD 계산
-   - AI 인사이트
-
-5. **일주일 후**
-   - Weekly Report 활성화
-   - 트렌드 분석
-
-### 기존 사용자 (데이터 없음)
-
-1. **Weekly Report 접속**
-   - "No Data" 메시지 표시
-   - "Record Data" 버튼 제공
-
-2. **데이터 입력 시작**
-   - 매일 데이터 기록
-
-3. **7일 후**
-   - 실제 데이터 기반 리포트 생성
-
----
-
-## 🎓 사용자 교육
-
-### 데이터 입력의 중요성
-
-**메시지**:
-> "Smart Farm AI는 **실제 농장 데이터**를 기반으로 AI 인사이트를 제공합니다. 
-> 매일 데이터를 기록할수록 더 정확한 추천을 받을 수 있습니다!"
-
-**권장 사항**:
-- ✅ 매일 같은 시간에 데이터 기록
-- ✅ 최소 주 3회 이상 입력
-- ✅ 특이사항은 메모에 기록
-
----
-
-## 🚀 배포 계획
-
-### Phase 1 완료 후
-
-1. **로컬 테스트**
-   - 백엔드 API 테스트
-   - 프론트엔드 UI 테스트
-
-2. **스테이징 배포**
-   - Vercel Preview 배포
-   - 베타 테스터 초대
-
-3. **프로덕션 배포**
-   - 점진적 롤아웃
-   - 모니터링
-
----
-
-## 📈 성공 지표
-
-### 단기 (1주)
-- ✅ 데이터베이스 스키마 생성
-- ✅ API 엔드포인트 구현
-- ⏳ 프론트엔드 통합
-
-### 중기 (1개월)
-- ⏳ 사용자의 50% 이상 데이터 입력
-- ⏳ Weekly Report 활성화율 70%
-
-### 장기 (3개월)
-- ⏳ IoT 센서 연동
-- ⏳ 실시간 알림 시스템
-- ⏳ 사용자 만족도 조사
-
----
-
-## 🎯 핵심 메시지
-
-### 사용자님께
-
-**현재 상황**:
-- ✅ 데이터베이스 및 백엔드 API 구현 완료
-- ✅ 데이터 입력 UI 컴포넌트 완성
-- ⏳ 대시보드 및 Weekly Report 통합 진행 중
-
-**다음 단계**:
-1. 대시보드에 "Record Data" 버튼 추가
-2. Weekly Report 페이지를 실제 데이터 기반으로 수정
-3. "No Data" 상태 처리
-4. 사용자 인증 연동
-
-**예상 완료 시간**: 2-3일
-
-**최종 목표**:
-> "사용자에게 정직하고 가치 있는 데이터 기반 인사이트 제공"
+**옵션 2: 백엔드 API 테스트**를 진행하여 법적 안전장치와 데이터 플로우가 완벽하게 작동하는지 검증하겠습니다.
 
 ---
 
 **작성자**: Antigravity AI  
-**최종 업데이트**: 2026-01-27 21:40 KST  
-**다음 업데이트**: Phase 1 완료 후
+**최종 업데이트**: 2026-01-27 22:00 KST

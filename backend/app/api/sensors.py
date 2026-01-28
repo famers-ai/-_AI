@@ -272,6 +272,53 @@ async def get_sensor_stats(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch stats: {str(e)}")
 
+@router.put("/reading/{reading_id}")
+async def update_sensor_reading(
+    reading_id: int,
+    reading: SensorReading,
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Update an existing sensor reading.
+    Recalculates VPD based on new values.
+    """
+    try:
+        from app.services.data_handler import calculate_vpd
+        new_vpd = calculate_vpd(reading.temperature, reading.humidity)
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check existence and ownership
+        cursor.execute("SELECT id FROM sensor_readings WHERE id = ? AND user_id = ?", (reading_id, user_id))
+        if not cursor.fetchone():
+            conn.close()
+            raise HTTPException(status_code=404, detail="Reading not found or unauthorized")
+            
+        cursor.execute("""
+            UPDATE sensor_readings
+            SET temperature = ?, humidity = ?, vpd = ?, soil_moisture = ?, 
+                light_level = ?, co2_level = ?, notes = ?, data_source = ?
+            WHERE id = ? AND user_id = ?
+        """, (
+            reading.temperature, reading.humidity, new_vpd, reading.soil_moisture,
+            reading.light_level, reading.co2_level, reading.notes, reading.data_source,
+            reading_id, user_id
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True, 
+            "message": "Reading updated successfully",
+            "vpd": new_vpd
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update reading: {str(e)}")
+
 @router.delete("/delete/{reading_id}")
 async def delete_reading(
     reading_id: int,

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchDashboardData, fetchAIAnalysis, type DashboardData } from "@/lib/api";
-import { Loader2, RefreshCw, MapPin, Search } from "lucide-react";
+import { fetchDashboardData, fetchAIAnalysis, fetchUserProfile, type DashboardData } from "@/lib/api";
+import { Loader2, RefreshCw, MapPin, Search, PlusCircle } from "lucide-react";
 import clsx from "clsx";
+import TermsAgreementModal from "@/components/TermsAgreementModal";
+import DataInputModal from "@/components/DataInputModal";
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -11,6 +13,14 @@ export default function Dashboard() {
   const [city, setCity] = useState("San Francisco");
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [tempCity, setTempCity] = useState(city);
+
+  // User & Terms State
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsTriggerAction, setTermsTriggerAction] = useState<(() => void) | null>(null);
+
+  // Data Input State
+  const [showDataInput, setShowDataInput] = useState(false);
 
   // AI State
   const [analyzing, setAnalyzing] = useState(false);
@@ -23,6 +33,14 @@ export default function Dashboard() {
     try {
       const dashboardData = await fetchDashboardData(city);
       setData(dashboardData);
+
+      // Fetch user profile to check terms agreement
+      try {
+        const profile = await fetchUserProfile();
+        setUserProfile(profile);
+      } catch (err) {
+        console.warn("Failed to fetch user profile", err);
+      }
     } catch (e) {
       console.error(e);
       // Retry logic could go here, but for now just clear data to show error state
@@ -45,15 +63,23 @@ export default function Dashboard() {
     loadData();
   }, [city]);
 
+  // LEGAL GUARD: Check terms before any sensitive action
+  const checkTermsAndAction = (action: () => void) => {
+    if (userProfile?.is_terms_agreed) {
+      action();
+    } else {
+      setTermsTriggerAction(() => action);
+      setShowTermsModal(true);
+    }
+  };
 
-  async function handleAnalyze() {
+  const executeAnalysis = async () => {
     if (!data) return;
     setAnalyzing(true);
     try {
-      // Pass combined indoor/outdoor context logic here, simplified for demo
       const result = await fetchAIAnalysis(
         data.crop,
-        data.indoor.temperature, // Using indoor temp for analysis context
+        data.indoor.temperature,
         data.indoor.humidity,
         data.weather.rain,
         data.weather.wind_speed
@@ -64,7 +90,21 @@ export default function Dashboard() {
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  async function handleAnalyze() {
+    checkTermsAndAction(executeAnalysis);
   }
+
+  const handleDataInputClick = () => {
+    checkTermsAndAction(() => setShowDataInput(true));
+  };
+
+  const handleDataSubmit = (sensorData: any) => {
+    // Refresh dashboard data after input (in a real app, optimize this)
+    loadData();
+    // Maybe show a toast notification here
+  };
 
   if (loading) {
     return (
@@ -153,24 +193,32 @@ export default function Dashboard() {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Indoor Environment</p>
-                  <h3 className="text-3xl font-bold text-slate-800 mt-2">{data.indoor.vpd} <span className="text-sm font-normal text-slate-400">kPa</span></h3>
+                  <h3 className="text-3xl font-bold text-slate-800 mt-2">
+                    {data.indoor.vpd ?? "--"} <span className="text-sm font-normal text-slate-400">kPa</span>
+                  </h3>
                   <p className={clsx("text-sm font-medium mt-1",
-                    data.indoor.vpd_status.includes("Risk") ? "text-yellow-600" : "text-emerald-600"
+                    data.indoor.vpd_status?.includes("Risk") ? "text-yellow-600" : "text-emerald-600"
                   )}>{data.indoor.vpd_status}</p>
                 </div>
                 <div className="text-right">
                   <div className="text-slate-500 text-sm">Temp</div>
-                  <div className="font-semibold text-lg">{data.indoor.temperature}°F</div>
+                  <div className="font-semibold text-lg">{data.indoor.temperature ?? "--"}°F</div>
                   <div className="text-slate-500 text-sm mt-2">Humidity</div>
-                  <div className="font-semibold text-lg">{data.indoor.humidity}%</div>
+                  <div className="font-semibold text-lg">{data.indoor.humidity ?? "--"}%</div>
                 </div>
               </div>
-              {/* Visual bar only shows if risky */}
-              {data.indoor.vpd_status.includes("Risk") &&
+              {/* Visual bar only shows if risky and data exists */}
+              {data.indoor.vpd && data.indoor.vpd_status?.includes("Risk") &&
                 <div className="mt-4 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                   <div className="bg-yellow-400 h-full w-[80%]"></div>
                 </div>
               }
+              {/* Data Record Prompt if empty */}
+              {!data.indoor.temperature && (
+                <div className="mt-4 text-xs text-center text-slate-400 bg-slate-50 py-2 rounded-lg border border-dashed border-slate-200">
+                  No data recorded today
+                </div>
+              )}
             </div>
 
             {/* Outdoor Card */}
@@ -178,14 +226,14 @@ export default function Dashboard() {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Outdoor Reference</p>
-                  <h3 className="text-3xl font-bold text-slate-800 mt-2">{data.weather.temperature}°F</h3>
+                  <h3 className="text-3xl font-bold text-slate-800 mt-2">{data.weather.temperature ?? "--"}°F</h3>
                   <p className="text-sm text-slate-500 mt-1">{data.location.name}</p>
                 </div>
                 <div className="text-right">
                   <div className="text-slate-500 text-sm">Humidity</div>
-                  <div className="font-semibold text-lg">{data.weather.humidity}%</div>
+                  <div className="font-semibold text-lg">{data.weather.humidity ?? "--"}%</div>
                   <div className="text-slate-500 text-sm mt-2">Wind</div>
-                  <div className="font-semibold text-lg">{data.weather.wind_speed} mph</div>
+                  <div className="font-semibold text-lg">{data.weather.wind_speed ?? 0} mph</div>
                 </div>
               </div>
             </div>
@@ -219,17 +267,20 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <p className="text-sm text-slate-400 italic text-center mt-8">
-                    Click analyze to get a real-time diagnosis for your {data.crop}.
+                    {!data.indoor.temperature ?
+                      "Please record farm data first to get AI diagnosis." :
+                      `Click analyze to get a real-time diagnosis for your ${data.crop}.`
+                    }
                   </p>
                 )}
               </div>
 
               <button
                 onClick={handleAnalyze}
-                disabled={analyzing}
+                disabled={analyzing || !data.indoor.temperature}
                 className={clsx(
                   "w-full font-medium py-3 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2",
-                  analyzing ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200"
+                  (analyzing || !data.indoor.temperature) ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200"
                 )}
               >
                 {analyzing ? (
@@ -247,6 +298,35 @@ export default function Dashboard() {
         </div>
 
       </div>
+
+      {/* Floating Action Button */}
+      <button
+        onClick={handleDataInputClick}
+        className="fixed bottom-8 right-8 z-40 flex items-center gap-2 px-6 py-4 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg transition-all hover:scale-105"
+      >
+        <PlusCircle size={24} />
+        <span className="font-bold text-lg">Record Data</span>
+      </button>
+
+      {/* Modals */}
+      {showDataInput && (
+        <DataInputModal
+          onClose={() => setShowDataInput(false)}
+          onSubmit={handleDataSubmit}
+        />
+      )}
+
+      {showTermsModal && (
+        <TermsAgreementModal
+          isOpen={showTermsModal}
+          onAgree={() => {
+            setShowTermsModal(false);
+            setUserProfile({ ...userProfile, is_terms_agreed: 1 });
+            if (termsTriggerAction) termsTriggerAction();
+            setTermsTriggerAction(null);
+          }}
+        />
+      )}
     </div>
   );
 }

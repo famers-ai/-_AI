@@ -41,7 +41,19 @@ def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(get_active_model_name())
         
+        # SAFETY: Strict System Prompt for Legal Compliance
+        system_safety_prompt = """
+        IMPORTANT SAFETY & LEGAL RULES:
+        1. YOU ARE AN ASSISTANT, NOT A LICENSED AGRONOMIST.
+        2. DO NOT RECOMMEND SPECIFIC CHEMICAL PESTICIDE BRAND NAMES.
+        3. Suggest only CULTURAL (e.g., ventilation), MECHANICAL (e.g., traps), or BIOLOGICAL controls.
+        4. ALWAYS advise user to consult local extension services.
+        5. Use soft language: "Consider", "Might help", "Monitor".
+        """
+        
         prompt = f"""
+        {system_safety_prompt}
+        
         You are {role}, also known as ForHuman AI.
         Current Crop: {crop_type}
         
@@ -56,6 +68,8 @@ def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
         **Reasoning**: [Explain why based on data and crop needs]
         
         Keep it brief, professional, and actionable for a US farmer. Use Imperial units.
+        
+        [DISCLAIMER]: This is an AI-generated suggestion for informational purposes only. Consult a professional before taking action.
         """
         
         response = model.generate_content(prompt)
@@ -67,6 +81,8 @@ def get_gemini_response(context_text, crop_type, role="Smart Farming Expert"):
         **Prescription**: Maintain current irrigation schedule.
         **Reasoning**: Conditions are within expected ranges for {crop_type}. 
         *(Error: {str(e)})*
+        
+        [DISCLAIMER]: This is a simulated response.
         """
 
 def load_knowledge_base():
@@ -122,7 +138,17 @@ def generate_weekly_report(crop_type):
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-1.5-flash")
         
+        # SAFETY PROMPT
+        system_safety_prompt = """
+        IMPORTANT LEGAL DISCLAIMER:
+        You are an AI assistant. Do NOT provide binding professional advice.
+        Focus on trends and data analysis.
+        DO NOT recommend chemical treatments.
+        """
+        
         prompt = f"""
+        {system_safety_prompt}
+        
         You are a Farm Manager AI. Write a 'Weekly Farm Report' based on the stats.
         Stats: {context}
         
@@ -130,6 +156,10 @@ def generate_weekly_report(crop_type):
         1. **Grade**: (A, B, C, etc based on adherence to standards)
         2. **Summary**: What went well/wrong.
         3. **Next Week Advice**: Focus area.
+        
+        Examples of Advice: "Maintain humidity", "Watch for temperature drops", "Check irrigation".
+        
+        [DISCLAIMER]: This report is AI-generated based on user data. Verify all conditions manually.
         """
         response = model.generate_content(prompt)
         return response.text
@@ -151,13 +181,22 @@ def analyze_crop_image(image_data):
         model = genai.GenerativeModel(model_name)
         
         prompt = """
-        You are ForHuman AI, an expert US Agricultural Extension Agent.
-        Analyze this image of a crop.
+        IMPORTANT LEGAL & SAFETY CHECK:
+        1. YOU ARE AN AI ASSISTANT, NOT A PLANT PATHOLOGIST.
+        2. Identify the crop.
+        3. Suggest POTENTIAL causes for symptoms (e.g., "This resembles powdery mildew").
+        4. Recommend NON-CHEMICAL controls (removing leaves, improving airflow).
+        5. DO NOT PRESCRIBE SPECIFIC FUNGICIDES OR PESTICIDES.
+        6. Always advise consulting a local expert.
+
+        Task:
         1. Identify the crop.
-        2. Diagnose any disease or deficiency (e.g., fungal, nutrient, pest).
-        3. Recommend a treatment focusing on ROI and efficacy.
+        2. Diagnose potential issues.
+        3. Recommend safe management practices.
         
         If healthy, say "Healthy" and estimate yield potential.
+        
+        [DISCLAIMER]: This analysis is for informational purposes only and is not a professional diagnosis.
         """
         
         response = model.generate_content([prompt, image_data])

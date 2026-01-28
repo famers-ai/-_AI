@@ -1,45 +1,94 @@
 from fastapi import APIRouter, HTTPException
 from app.services.data_handler import fetch_weather_data, get_coordinates_from_city, calculate_vpd
 from app.services.ai_engine import analyze_situation
+import sqlite3
+import os
+
+# Database path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DB_NAME = os.path.join(BASE_DIR, "farm_data.db")
 
 router = APIRouter()
 
-@router.get("/dashboard")
-def get_dashboard_data(
+@router.get("")
+async def get_dashboard_data(
+    city: str,
     crop_type: str = "Strawberries",
-    city: str = "San Francisco" 
+    user_id: str = "test_user_001" # Auth placeholder
 ):
-    # 1. Get Coordinates
-    lat, lon, name = get_coordinates_from_city(city)
-    if not lat:
-        lat, lon, name = 37.7749, -122.4194, "San Francisco (Fallback)"
-    
-    # 2. Fetch Weather
-    weather = fetch_weather_data(lat, lon)
-    
-    # 3. Virtual Indoor Sensor Logic (Simulating Greenhouse)
-    estimated_temp = max(32.0, min(120.0, weather['temperature'] + 8.0))
-    estimated_hum = max(10.0, min(100.0, weather['humidity'] + 10.0))
-    
-    indoor_vpd = calculate_vpd(estimated_temp, estimated_hum)
-    
-    vpd_status = "Optimal"
-    if indoor_vpd < 0.4: vpd_status = "Too Humid (Risk: Fungal)"
-    elif indoor_vpd > 1.6: vpd_status = "Too Dry (Risk: Mites)"
-    
-    indoor_data = {
-        "temperature": round(estimated_temp, 1),
-        "humidity": round(estimated_hum, 1),
-        "vpd": indoor_vpd,
-        "vpd_status": vpd_status
-    }
+    try:
+        # 1. Fetch Real Weather (External API is 'Real' data)
+        lat, lon, location_name = get_coordinates_from_city(city)
+        if not lat:
+            raise HTTPException(status_code=404, detail="City not found")
+            
+        weather = fetch_weather_data(lat, lon)
+        if weather is None:
+            weather = {
+                "temperature": None,
+                "humidity": None,
+                "rain": None,
+                "wind_speed": None
+            }
+        
+        # 2. Fetch User's Real Indoor Data (DB)
+        # NO MORE SIMULATION. Only DB data.
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT temperature, humidity, vpd, soil_moisture, timestamp 
+            FROM sensor_readings 
+            WHERE user_id = ? 
+            ORDER BY timestamp DESC 
+            LIMIT 1
+        """, (user_id,))
+        
+        indoor_row = cursor.fetchone()
+        conn.close()
 
-    return {
-        "location": {"name": name, "lat": lat, "lon": lon},
-        "weather": weather,
-        "indoor": indoor_data,
-        "crop": crop_type
-    }
+        # Default state if no data
+        indoor_data = {
+            "temperature": None,
+            "humidity": None,
+            "vpd": None,
+            "vpd_status": "No Data - Please Record",
+            "soil_moisture": None,
+            "timestamp": None
+        }
+
+        if indoor_row:
+            indoor_data = {
+                "temperature": indoor_row['temperature'],
+                "humidity": indoor_row['humidity'],
+                "vpd": indoor_row['vpd'],
+                "vpd_status": get_vpd_status(indoor_row['vpd']),
+                "soil_moisture": indoor_row['soil_moisture'],
+                "timestamp": indoor_row['timestamp']
+            }
+
+        return {
+            "location": {
+                "name": location_name,
+                "lat": lat,
+                "lon": lon
+            },
+            "weather": weather, # Outside weather is always real
+            "indoor": indoor_data,
+            "crop": crop_type
+        }
+        
+    except Exception as e:
+        print(f"Dashboard Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch dashboard data")
+
+def get_vpd_status(vpd):
+    if vpd is None: return "No Data"
+    if vpd < 0.4: return "Risk: Low (Humid)"
+    if 0.4 <= vpd <= 1.2: return "Optimal"
+    if 1.2 < vpd <= 1.6: return "Acceptable"
+    return "Risk: High (Dry)"
 
 @router.get("/ai/analyze")
 def ai_analyze(crop_type: str, temp: float, humidity: float, rain: float, wind: float):

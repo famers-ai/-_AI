@@ -1,8 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import dashboard, ai, forecast, market, sensors, reports, users
+from app.core.db_init import init_db_if_missing
 
 app = FastAPI(title="Smart Farm AI API", version="2.0.0")
+
+@app.on_event("startup")
+async def startup_event():
+    init_db_if_missing()
 
 # CORS configuration
 origins = [

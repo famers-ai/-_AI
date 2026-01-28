@@ -22,7 +22,7 @@ export interface DashboardData {
 }
 
 export async function fetchDashboardData(city: string = "San Francisco"): Promise<DashboardData> {
-    const res = await fetch(`${API_BASE_url}/dashboard?crop_type=Strawberries&city=${encodeURIComponent(city)}`);
+    const res = await fetch(`${API_BASE_url}/dashboard?crop_type=Strawberries&city=${encodeURIComponent(city)}`, { cache: "no-store" });
     if (!res.ok) {
         throw new Error("Failed to fetch dashboard data");
     }
@@ -104,7 +104,7 @@ export async function recordSensorData(data: any) {
 }
 
 export async function fetchWeeklyReport() {
-    const res = await fetch(`${API_BASE_url}/reports/weekly`);
+    const res = await fetch(`${API_BASE_url}/reports/weekly`, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to fetch weekly report");
     return res.json();
 }

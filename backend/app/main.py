@@ -32,6 +32,8 @@ app.include_router(market.router, prefix="/api/market")
 app.include_router(sensors.router, prefix="/api/sensors", tags=["Sensors"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
+from app.api import admin
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 @app.get("/")
 def read_root():

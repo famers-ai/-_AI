@@ -28,3 +28,6 @@ dist/
 backend.log
 frontend.log
 
+# Database
+*.db
+*.sqlite3

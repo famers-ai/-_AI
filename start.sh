@@ -46,6 +46,11 @@ fi
 
 # Start backend server
 echo -e "${GREEN}🔧 Starting Backend Server (Port 8000)...${NC}"
+
+if [ ! -f "backend/farm_data.db" ]; then
+    echo -e "${BLUE}ℹ️  Database not found. Initializing...${NC}"
+    python3 backend/scripts/init_real_data_db.py
+fi
 cd backend
 python3 -m uvicorn app.main:app --reload --port 8000 > ../backend.log 2>&1 &
 BACKEND_PID=$!

@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import dashboard, ai, forecast, market
+from app.api import dashboard, ai, forecast, market, sensors, reports
 
-app = FastAPI(title="Smart Farm AI API", version="1.0.0")
+app = FastAPI(title="Smart Farm AI API", version="2.0.0")
 
 # CORS configuration
 origins = [
@@ -19,10 +19,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# API Routers
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(ai.router, prefix="/api/ai")
 app.include_router(forecast.router, prefix="/api/pest")
 app.include_router(market.router, prefix="/api/market")
+app.include_router(sensors.router, prefix="/api/sensors", tags=["Sensors"])
+app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 
 @app.get("/")
 def read_root():

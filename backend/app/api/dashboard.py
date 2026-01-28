@@ -40,7 +40,7 @@ async def get_dashboard_data(
         cursor.execute("""
             SELECT temperature, humidity, vpd, soil_moisture, timestamp 
             FROM sensor_readings 
-            WHERE user_id = ? 
+            WHERE user_id = ? AND (data_source IS NULL OR data_source != 'Simulated') 
             ORDER BY timestamp DESC 
             LIMIT 1
         """, (user_id,))

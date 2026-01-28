@@ -49,6 +49,7 @@ async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
                 COUNT(*) as readings_count
             FROM sensor_readings
             WHERE user_id = ?
+            AND (data_source IS NULL OR data_source != 'Simulated')
             AND timestamp >= datetime('now', '-7 days')
             GROUP BY DATE(timestamp)
             ORDER BY date ASC
@@ -73,6 +74,7 @@ async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
                 AVG(vpd) as prev_avg_vpd
             FROM sensor_readings
             WHERE user_id = ?
+            AND (data_source IS NULL OR data_source != 'Simulated')
             AND timestamp >= datetime('now', '-14 days')
             AND timestamp < datetime('now', '-7 days')
         """, (user_id,))

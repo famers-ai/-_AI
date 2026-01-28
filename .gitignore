@@ -22,3 +22,9 @@ dist/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Server management
+*.pid
+backend.log
+frontend.log
+

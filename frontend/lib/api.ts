@@ -79,6 +79,7 @@ export async function fetchMarketPrices(crop: string) {
 
 export async function fetchUserProfile() {
     const res = await fetch(`${API_BASE_url}/users/me`);
+    if (res.status === 404) return null; // Benign case: User not logged in
     if (!res.ok) throw new Error("Failed to fetch user profile");
     return res.json();
 }

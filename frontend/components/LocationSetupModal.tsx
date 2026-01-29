@@ -19,6 +19,18 @@ export default function LocationSetupModal({ isOpen, onClose, onLocationSet }: L
     const [region, setRegion] = useState('');
     const [country, setCountry] = useState('');
 
+    // Reset form when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setStep('choice');
+            setCity('');
+            setRegion('');
+            setCountry('');
+            setError(null);
+            setLoading(false);
+        }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const handleAutoDetect = async () => {

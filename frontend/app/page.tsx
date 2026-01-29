@@ -125,10 +125,12 @@ export default function Dashboard() {
         <div className="bg-red-50 p-4 rounded-full mb-4">
           <RefreshCw className="text-red-500" size={32} />
         </div>
-        <h3 className="text-lg font-semibold text-slate-700">Unable to Connect</h3>
-        <p className="text-sm mt-2 mb-6">The SmartFarm Backend seems to be offline.</p>
+        <h3 className="text-lg font-semibold text-slate-700">Connection Issue</h3>
+        <p className="text-sm mt-2 mb-6 text-center max-w-sm">
+          Unable to load dashboard data. Please check your internet connection or try reloading.
+        </p>
         <button onClick={() => loadData()} className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors">
-          Retry Connection
+          Retry
         </button>
       </div>
     );

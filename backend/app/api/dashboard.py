@@ -18,9 +18,59 @@ async def get_dashboard_data(
 ):
     try:
         # 1. Fetch Real Weather (External API is 'Real' data)
-        lat, lon, location_name = get_coordinates_from_city(city)
-        if not lat:
-            raise HTTPException(status_code=404, detail="City not found")
+        try:
+            lat, lon, location_name = get_coordinates_from_city(city)
+            if not lat or not lon:
+                # Return default data instead of crashing
+                return {
+                    "location": {
+                        "name": city,
+                        "lat": None,
+                        "lon": None,
+                        "error": "City not found. Please check spelling or try a nearby major city."
+                    },
+                    "weather": {
+                        "temperature": None,
+                        "humidity": None,
+                        "rain": None,
+                        "wind_speed": None
+                    },
+                    "indoor": {
+                        "temperature": None,
+                        "humidity": None,
+                        "vpd": None,
+                        "vpd_status": "No Data - Please Record",
+                        "soil_moisture": None,
+                        "timestamp": None
+                    },
+                    "crop": crop_type
+                }
+        except Exception as city_error:
+            print(f"City lookup error: {city_error}")
+            # Return graceful fallback instead of 500 error
+            return {
+                "location": {
+                    "name": city,
+                    "lat": None,
+                    "lon": None,
+                    "error": "Unable to find location. Please try a different city name."
+                },
+                "weather": {
+                    "temperature": None,
+                    "humidity": None,
+                    "rain": None,
+                    "wind_speed": None
+                },
+                "indoor": {
+                    "temperature": None,
+                    "humidity": None,
+                    "vpd": None,
+                    "vpd_status": "No Data - Please Record",
+                    "soil_moisture": None,
+                    "timestamp": None
+                },
+                "crop": crop_type
+            }
             
         weather = fetch_weather_data(lat, lon)
         if weather is None:
@@ -81,7 +131,30 @@ async def get_dashboard_data(
         
     except Exception as e:
         print(f"Dashboard Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch dashboard data")
+        # Return graceful error response instead of 500
+        return {
+            "location": {
+                "name": city,
+                "lat": None,
+                "lon": None,
+                "error": "Service temporarily unavailable"
+            },
+            "weather": {
+                "temperature": None,
+                "humidity": None,
+                "rain": None,
+                "wind_speed": None
+            },
+            "indoor": {
+                "temperature": None,
+                "humidity": None,
+                "vpd": None,
+                "vpd_status": "No Data - Please Record",
+                "soil_moisture": None,
+                "timestamp": None
+            },
+            "crop": crop_type
+        }
 
 def get_vpd_status(vpd):
     if vpd is None: return "No Data"

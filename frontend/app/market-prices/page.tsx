@@ -45,11 +45,11 @@ export default function MarketPricesPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Chart */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-[400px]">
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                     <h3 className="font-semibold text-slate-700 mb-4 flex items-center gap-2">
                         <TrendingUp size={18} /> 7-Day Price Trend
                     </h3>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={320}>
                         <LineChart data={data}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="Date" tickFormatter={(str) => formatToUSDate(str, { weekday: 'short' })} />

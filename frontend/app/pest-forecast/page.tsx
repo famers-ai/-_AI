@@ -48,11 +48,11 @@ export default function PestForecastPage() {
             </div>
 
             {/* Chart Section */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-[400px]">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h3 className="font-semibold text-slate-700 mb-4 flex items-center gap-2">
                     <AlertOctagon size={18} /> Risk Trend
                 </h3>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={320}>
                     <AreaChart data={data}>
                         <defs>
                             <linearGradient id="colorRisk" x1="0" y1="0" x2="0" y2="1">

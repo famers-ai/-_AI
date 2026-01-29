@@ -47,30 +47,62 @@ class IPLocationResponse(BaseModel):
 async def detect_location_from_ip():
     """
     Detect user location from IP address (city-level only)
-    Uses ipapi.co free API - no API key required
+    Uses ipapi.co free API with ip-api.com as fallback
     
     Privacy: Only returns city/region/country, not exact coordinates
     """
+    # Try ipapi.co first
     try:
-        # Use ipapi.co free tier (1000 requests/day)
         response = requests.get('https://ipapi.co/json/', timeout=5)
         
-        if response.status_code != 200:
-            raise HTTPException(status_code=500, detail="Failed to detect location")
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Check if we got valid data
+            if data.get("city") and data.get("city") != "Unknown":
+                return {
+                    "city": data.get("city", "Unknown"),
+                    "region": data.get("region", "Unknown"),
+                    "country": data.get("country_name", "Unknown"),
+                    "latitude": data.get("latitude"),
+                    "longitude": data.get("longitude"),
+                    "detected": True,
+                    "source": "ipapi.co"
+                }
+    except Exception as e:
+        print(f"ipapi.co failed: {e}")
+    
+    # Fallback to ip-api.com (free, no key required, 45 req/min)
+    try:
+        response = requests.get('http://ip-api.com/json/', timeout=5)
         
-        data = response.json()
-        
-        return {
-            "city": data.get("city", "Unknown"),
-            "region": data.get("region", "Unknown"),
-            "country": data.get("country_name", "Unknown"),
-            "latitude": data.get("latitude"),
-            "longitude": data.get("longitude"),
-            "detected": True
-        }
-        
-    except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Location detection failed: {str(e)}")
+        if response.status_code == 200:
+            data = response.json()
+            
+            if data.get("status") == "success":
+                return {
+                    "city": data.get("city", "Unknown"),
+                    "region": data.get("regionName", "Unknown"),
+                    "country": data.get("country", "Unknown"),
+                    "latitude": data.get("lat"),
+                    "longitude": data.get("lon"),
+                    "detected": True,
+                    "source": "ip-api.com"
+                }
+    except Exception as e:
+        print(f"ip-api.com failed: {e}")
+    
+    # If both fail, return a default location (can be customized)
+    return {
+        "city": "San Francisco",
+        "region": "California",
+        "country": "United States",
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "detected": False,
+        "source": "default",
+        "message": "Could not detect location, using default"
+    }
 
 @router.post("/set")
 async def set_user_location(

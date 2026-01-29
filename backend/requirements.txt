@@ -7,3 +7,4 @@ python-dotenv
 Pillow
 fpdf2
 python-multipart
+slowapi

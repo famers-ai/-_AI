@@ -27,22 +27,40 @@ export default function LocationSetupModal({ isOpen, onClose, onLocationSet }: L
         setError(null);
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/location/detect-from-ip`);
+            // Client-side detection ensures correct User IP usage and transparency
+            // Using ipapi.co (Primary)
+            let response = await fetch('https://ipapi.co/json/');
+            let data;
 
-            if (!response.ok) {
-                throw new Error('Failed to detect location');
+            if (response.ok) {
+                data = await response.json();
+            } else {
+                // Fallback: ip-api.com
+                console.warn('ipapi.co failed, trying fallback...');
+                response = await fetch('http://ip-api.com/json/');
+                const fallbackData = await response.json();
+                if (fallbackData.status === 'success') {
+                    data = {
+                        city: fallbackData.city,
+                        region: fallbackData.regionName,
+                        country: fallbackData.country
+                    };
+                } else {
+                    throw new Error('All location services failed');
+                }
             }
 
-            const data = await response.json();
+            if (!data.city) throw new Error('City not found in response');
 
             // Show detected location and ask for confirmation
             setCity(data.city);
-            setRegion(data.region);
-            setCountry(data.country);
+            setRegion(data.region || '');
+            setCountry(data.country || data.country_name || '');
             setLoading(false);
 
         } catch (err) {
-            setError('Unable to detect location. Please try manual input.');
+            console.error(err);
+            setError('Unable to detect location automatically. Please try manual input.');
             setLoading(false);
             setStep('manual');
         }

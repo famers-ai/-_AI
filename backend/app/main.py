@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import dashboard, ai, forecast, market, sensors, reports, users
+from app.api import dashboard, ai, forecast, market, sensors, reports, users, location
 from app.core.db_init import init_db_if_missing
 
 app = FastAPI(title="Smart Farm AI API", version="2.0.0")
@@ -32,6 +32,7 @@ app.include_router(market.router, prefix="/api/market")
 app.include_router(sensors.router, prefix="/api/sensors", tags=["Sensors"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
+app.include_router(location.router, prefix="/api/location", tags=["Location"])
 from app.api import admin
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 

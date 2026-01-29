@@ -14,7 +14,8 @@ def init_db_if_missing():
     if not os.path.exists(DB_NAME):
         logger.info(f"Database not found at {DB_NAME}. Initializing...")
         init_real_data_schema()
-        create_sample_user()
+        # DO NOT create sample user - only real users via Google OAuth
+        logger.info("Database schema initialized. No sample data created.")
     else:
         logger.info(f"Database found at {DB_NAME}. Checking schema...")
         # Optional: Add migration logic here if needed
@@ -181,7 +182,11 @@ def init_real_data_schema():
         conn.close()
 
 def create_sample_user():
-    """Create a sample user for testing"""
+    """
+    DEPRECATED: Create a sample user for testing
+    This function is no longer called automatically.
+    Only use manually for local development testing.
+    """
     try:
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
@@ -200,6 +205,7 @@ def create_sample_user():
             'Strawberries'
         ))
         conn.commit()
+        logger.warning("Sample user created - this should only be used for local testing!")
     except Exception as e:
         logger.error(f"Failed to create sample user: {e}")
     finally:

@@ -9,6 +9,9 @@ from typing import Optional
 from datetime import datetime
 import sqlite3
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -76,3 +79,52 @@ async def update_terms_agreement(
     conn.close()
     
     return {"status": "success", "message": "Terms agreement updated"}
+
+class UserSync(BaseModel):
+    email: str
+    name: Optional[str] = None
+    image: Optional[str] = None
+    provider: Optional[str] = None
+    provider_id: Optional[str] = None
+
+@router.post("/sync")
+async def sync_user(user_data: UserSync):
+    """
+    Create or update user from OAuth provider (Google)
+    This ensures every authenticated user has a database record
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Generate user ID from email (consistent across logins)
+    import hashlib
+    user_id = hashlib.sha256(user_data.email.encode()).hexdigest()[:16]
+    
+    # Check if user exists
+    cursor.execute("SELECT id FROM users WHERE email = ?", (user_data.email,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        # Update existing user
+        cursor.execute("""
+            UPDATE users 
+            SET name = ?, updated_at = ?
+            WHERE email = ?
+        """, (user_data.name, datetime.now(), user_data.email))
+        logger.info(f"Updated existing user: {user_data.email}")
+    else:
+        # Create new user
+        cursor.execute("""
+            INSERT INTO users (id, email, name, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (user_id, user_data.email, user_data.name, datetime.now(), datetime.now()))
+        logger.info(f"Created new user: {user_data.email} with ID: {user_id}")
+    
+    conn.commit()
+    conn.close()
+    
+    return {
+        "status": "success", 
+        "message": "User synced successfully",
+        "user_id": user_id
+    }

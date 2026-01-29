@@ -7,7 +7,7 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(false);
 
     const handleReset = async () => {
-        if (!confirm('경고: 모든 센서 데이터와 예보 데이터가 영구적으로 삭제됩니다. 계속하시겠습니까?')) {
+        if (!confirm('테스트 데이터를 삭제하시겠습니까?\n\n실제 사용자 데이터는 안전하게 보존됩니다.')) {
             return;
         }
 
@@ -44,10 +44,18 @@ export default function AdminPage() {
             <h1 className="text-3xl font-bold text-red-600 mb-6">⚠️ Admin Zone</h1>
 
             <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                <h2 className="text-xl font-semibold mb-4">데이터베이스 초기화</h2>
+                <h2 className="text-xl font-semibold mb-4">테스트 데이터 정리</h2>
                 <p className="text-gray-600 mb-6">
-                    이 작업은 복구할 수 없습니다. 서버의 모든 '센서 측정값'과 '병해충 예보' 데이터를 삭제합니다.
-                    배포된 서버에 남아있는 가짜 데이터를 정리할 때 사용하세요.
+                    이 작업은 <strong>테스트 사용자(test_user_001)</strong>의 데이터만 삭제합니다.
+                    <br />
+                    Google 로그인으로 생성된 <strong>실제 사용자 데이터는 안전하게 보존</strong>됩니다.
+                    <br /><br />
+                    삭제 대상:
+                    <ul className="list-disc ml-6 mt-2">
+                        <li>테스트 사용자 계정</li>
+                        <li>테스트 센서 측정값</li>
+                        <li>테스트 병해충 예보</li>
+                    </ul>
                 </p>
 
                 <div className="flex items-center gap-4">
@@ -55,11 +63,11 @@ export default function AdminPage() {
                         onClick={handleReset}
                         disabled={loading}
                         className={`px-6 py-3 rounded-lg text-white font-medium transition-colors ${loading
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-red-600 hover:bg-red-700'
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-red-600 hover:bg-red-700'
                             }`}
                     >
-                        {loading ? '처리 중...' : '데이터 초기화 실행'}
+                        {loading ? '처리 중...' : '테스트 데이터 정리'}
                     </button>
 
                     {status && (

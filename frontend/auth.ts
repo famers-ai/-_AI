@@ -18,6 +18,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     callbacks: {
         async signIn({ user, account, profile }) {
             console.log("Sign in callback:", { user, account, profile })
+
+            // Create or update user in backend database
+            try {
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+
+                const response = await fetch(`${API_URL}/users/sync`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: user.email,
+                        name: user.name,
+                        image: user.image,
+                        provider: account?.provider,
+                        provider_id: account?.providerAccountId
+                    })
+                })
+
+                if (!response.ok) {
+                    console.error("Failed to sync user with backend:", await response.text())
+                }
+            } catch (error) {
+                console.error("Error syncing user with backend:", error)
+            }
+
             return true
         },
         async redirect({ url, baseUrl }) {

@@ -35,7 +35,7 @@ export default function DataInputModal({ onClose, onSubmit }: DataInputModalProp
                 notes: notes || undefined,
             };
 
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sensors/record`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sensors/record`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),

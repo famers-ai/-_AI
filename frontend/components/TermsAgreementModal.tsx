@@ -22,7 +22,7 @@ export default function TermsAgreementModal({ isOpen, onAgree }: TermsAgreementM
         setIsSubmitting(true);
         try {
             // API call to update user status
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me/terms`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/terms`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ agreed: true })

@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { saveLocalSensorData, calculateVPD } from '@/lib/storage';
 
 interface DataInputModalProps {
     onClose: () => void;
     onSubmit: (data: SensorData) => void;
+    isLoggedIn: boolean;
 }
 
 interface SensorData {
@@ -14,7 +16,7 @@ interface SensorData {
     notes?: string;
 }
 
-export default function DataInputModal({ onClose, onSubmit }: DataInputModalProps) {
+export default function DataInputModal({ onClose, onSubmit, isLoggedIn }: DataInputModalProps) {
     const [temperature, setTemperature] = useState('');
     const [humidity, setHumidity] = useState('');
     const [soilMoisture, setSoilMoisture] = useState('');
@@ -28,13 +30,44 @@ export default function DataInputModal({ onClose, onSubmit }: DataInputModalProp
         setIsSubmitting(true);
 
         try {
+            const tempVal = parseFloat(temperature);
+            const humidVal = parseFloat(humidity);
+
             const data: SensorData = {
-                temperature: parseFloat(temperature),
-                humidity: parseFloat(humidity),
+                temperature: tempVal,
+                humidity: humidVal,
                 soil_moisture: soilMoisture ? parseFloat(soilMoisture) : undefined,
                 notes: notes || undefined,
             };
 
+            if (!isLoggedIn) {
+                // Guest mode: Save to local storage
+                saveLocalSensorData(data);
+
+                // Simulate network delay for better UX
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                // Calculate VPD for immediate display update
+                const vpd = calculateVPD(tempVal, humidVal);
+
+                // Mock response structure expected by Dashboard
+                // Pass formatted data to parent
+                onSubmit({
+                    ...data,
+                    // @ts-ignore - Dashboard expects indoor structure eventually
+                    indoor: {
+                        temperature: tempVal,
+                        humidity: humidVal,
+                        vpd: vpd,
+                        vpd_status: vpd < 0.4 ? 'Low' : vpd > 1.2 ? 'High' : 'Optimal'
+                    }
+                });
+
+                onClose();
+                return;
+            }
+
+            // Logged in: Save to Server
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sensors/record`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -45,7 +78,6 @@ export default function DataInputModal({ onClose, onSubmit }: DataInputModalProp
                 throw new Error('Failed to record data');
             }
 
-            const result = await response.json();
             onSubmit(data);
             onClose();
         } catch (err) {
@@ -187,7 +219,9 @@ export default function DataInputModal({ onClose, onSubmit }: DataInputModalProp
                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-xs text-blue-800">
                         <strong>💡 Tip:</strong> Record data daily for accurate weekly reports and AI insights.
-                        The more data you provide, the better recommendations you'll receive!
+                        {isLoggedIn
+                            ? " The more data you provide, the better recommendations you'll receive!"
+                            : " Note: You are in Guest Mode. Data is saved to your browser only. Login to sync across devices."}
                     </p>
                 </div>
             </div>

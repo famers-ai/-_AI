@@ -31,16 +31,35 @@ export default function Dashboard() {
   async function loadData() {
     setLoading(true);
     try {
-      const dashboardData = await fetchDashboardData(city);
-      setData(dashboardData);
+      let dashboardData = await fetchDashboardData(city); // use let to allow modification
 
       // Fetch user profile to check terms agreement
       try {
         const profile = await fetchUserProfile();
         setUserProfile(profile);
+
+        // If guest (no profile), check local storage override
+        if (!profile) {
+          const { getLatestLocalReading, calculateVPD } = await import("@/lib/storage");
+          const localReading = getLatestLocalReading();
+          if (localReading) {
+            const vpd = calculateVPD(localReading.temperature, localReading.humidity);
+            dashboardData = {
+              ...dashboardData,
+              indoor: {
+                temperature: localReading.temperature,
+                humidity: localReading.humidity,
+                vpd: vpd,
+                vpd_status: vpd < 0.4 ? 'Low' : vpd > 1.2 ? 'High' : 'Optimal'
+              }
+            };
+          }
+        }
       } catch (err) {
         console.warn("Failed to fetch user profile", err);
       }
+
+      setData(dashboardData);
     } catch (e) {
       console.error(e);
       // Retry logic could go here, but for now just clear data to show error state
@@ -315,6 +334,7 @@ export default function Dashboard() {
         <DataInputModal
           onClose={() => setShowDataInput(false)}
           onSubmit={handleDataSubmit}
+          isLoggedIn={!!userProfile}
         />
       )}
 

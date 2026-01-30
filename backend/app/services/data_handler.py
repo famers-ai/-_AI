@@ -30,37 +30,66 @@ def fetch_weather_data(lat=37.7749, lon=-122.4194):
 
 @lru_cache(maxsize=128)
 def get_coordinates_from_city(city_name):
+    """
+    Enhanced geocoding with better accuracy for US cities
+    Prioritizes US locations and provides detailed location names
+    """
     try:
         url = "https://geocoding-api.open-meteo.com/v1/search"
         params = {
             "name": city_name,
-            "count": 5,
+            "count": 10,  # Get more results for better matching
             "language": "en",
             "format": "json"
         }
         response = requests.get(url, params=params, timeout=5)
         data = response.json()
         
-        if "results" in data and data["results"]:
-            # Prefer match with highest population if available, or just first
-            results = data["results"]
-            # specific fix for "New York" -> usually first is NYC, but let's be safe
-            best_match = results[0]
-            
-            lat = best_match.get("latitude")
-            lon = best_match.get("longitude")
-            country = best_match.get("country", "")
-            state = best_match.get("admin1", "")
-            
-            # Formatting name nicely
-            location_name = f"{best_match['name']}"
-            if state: location_name += f", {state}"
-            elif country: location_name += f", {country}"
-            
-            return lat, lon, location_name
-    except Exception:
-        pass
-    return None, None, None
+        if "results" not in data or not data["results"]:
+            return None, None, None
+        
+        results = data["results"]
+        
+        # Prioritize US locations
+        us_results = [r for r in results if r.get("country_code") == "US"]
+        if us_results:
+            results = us_results
+        
+        # Select best match
+        # Prefer results with higher population or admin level
+        best_match = results[0]
+        for result in results:
+            # Prioritize by population if available
+            if result.get("population", 0) > best_match.get("population", 0):
+                best_match = result
+        
+        lat = best_match.get("latitude")
+        lon = best_match.get("longitude")
+        country = best_match.get("country", "")
+        country_code = best_match.get("country_code", "")
+        state = best_match.get("admin1", "")  # State/Province
+        county = best_match.get("admin2", "")  # County
+        
+        # Format location name with detail
+        location_name = f"{best_match['name']}"
+        
+        # Add state for US locations
+        if country_code == "US" and state:
+            location_name += f", {state}"
+        elif state and not country_code == "US":
+            location_name += f", {state}"
+        
+        # Add country if not US
+        if country_code != "US" and country:
+            location_name += f", {country}"
+        
+        print(f"📍 Geocoded '{city_name}' -> {location_name} ({lat}, {lon})")
+        
+        return lat, lon, location_name
+        
+    except Exception as e:
+        print(f"Geocoding error for '{city_name}': {e}")
+        return None, None, None
 
 def calculate_vpd(temp_f, humidity):
     temp_c = (temp_f - 32) * 5.0/9.0
@@ -120,14 +149,17 @@ def fetch_7day_weather(lat, lon):
         return {}
 
 def calculate_weekly_pest_risk(lat, lon, crop_type):
+    """
+    Calculate pest risk using scientific models + AI fallback
+    Priority: Scientific Models > AI > Rule-based
+    """
     daily = fetch_7day_weather(lat, lon)
     if not daily:
         return pd.DataFrame() 
     
-    # Check if we can use AI first
     dates = daily.get('time', [])
     
-    # Simplify weather for AI context
+    # Prepare weather data for analysis
     weather_summary = []
     for i in range(len(dates)):
         weather_summary.append({
@@ -136,13 +168,27 @@ def calculate_weekly_pest_risk(lat, lon, crop_type):
             "humidity": daily['relative_humidity_2m_mean'][i],
             "rain": daily['precipitation_sum'][i]
         })
+    
+    # Try scientific model first
+    try:
+        from app.services.pest_forecast import forecast_pest_risk
+        forecast_data = forecast_pest_risk(crop_type, weather_summary)
         
+        if forecast_data:
+            df = pd.DataFrame(forecast_data)
+            df['Source'] = "Scientific Pest Model"
+            return df
+    except ImportError:
+        print("⚠️ pest_forecast module not available, trying AI")
+    except Exception as e:
+        print(f"Error in scientific pest forecast: {e}")
+    
+    # Fallback to AI analysis
     ai_results = analyze_pest_risk_with_ai(weather_summary, crop_type)
     
     if ai_results:
         # Merge AI results with rain data for chart
         for i, item in enumerate(ai_results):
-            # Try to match rain data if dates align
             if i < len(daily['precipitation_sum']):
                  item["Rain (in)"] = daily['precipitation_sum'][i]
         
@@ -150,7 +196,7 @@ def calculate_weekly_pest_risk(lat, lon, crop_type):
         df_ai['Source'] = "AI Analysis (Gemini 1.5)"
         return df_ai
 
-    # Fallback to Rule-based if AI fails or no key
+    # Last resort: Simple rule-based fallback
     max_temps = daily.get('temperature_2m_max', [])
     min_temps = daily.get('temperature_2m_min', [])
     humidities = daily.get('relative_humidity_2m_mean', [])
@@ -170,6 +216,7 @@ def calculate_weekly_pest_risk(lat, lon, crop_type):
         risk_detail = "Low Risk (Rule-Based)"
         primary_pest = "None"
         
+        # Basic rules for strawberries
         if crop_type == "Strawberries":
             if 55 <= avg_temp <= 75 and (rain > 0.05 or hum > 85):
                 risk_score = 90
@@ -190,16 +237,33 @@ def calculate_weekly_pest_risk(lat, lon, crop_type):
             "Temp (F)": avg_temp
         })
         
-    return pd.DataFrame(risk_data)
+    df = pd.DataFrame(risk_data)
+    df['Source'] = "Basic Rule-Based Model"
+    return df
 
 def fetch_market_prices(crop_type):
-    # Try AI First
+    """
+    Fetch real market prices using USDA NASS API
+    Falls back to AI analysis if real data unavailable
+    """
+    try:
+        from app.services.market_data import get_market_prices
+        df = get_market_prices(crop_type)
+        
+        if df is not None and not df.empty:
+            return df
+    except ImportError:
+        print("⚠️ market_data module not available, using AI fallback")
+    except Exception as e:
+        print(f"Error fetching real market data: {e}")
+    
+    # Fallback to AI analysis
     ai_prices = analyze_market_prices_with_ai(crop_type)
     if ai_prices:
         df = pd.DataFrame(ai_prices)
         df['Source'] = "AI Market Analysis (Gemini 1.5)"
         return df
 
-    # STRICT REAL DATA POLICY: No simulation allowed
-    # Return empty if AI fails and no real API is available
+    # Last resort: return empty DataFrame
     return pd.DataFrame(columns=["Date", "Price ($/lb)", "Source"])
+

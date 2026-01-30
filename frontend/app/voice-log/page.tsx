@@ -6,7 +6,41 @@ interface VoiceLog {
     id: string;
     text: string;
     timestamp: Date;
-    category: 'observation' | 'task' | 'issue' | 'note';
+    category: 'observation' | 'task' | 'issue' | 'note' | 'harvest';
+    parsedData?: {
+        crop?: string;
+        quantity?: number;
+        unit?: string;
+        action?: string;
+    };
+}
+
+// 🤖 AI 파싱 함수 - 자연어를 구조화된 데이터로 변환
+function parseVoiceInput(text: string): VoiceLog['parsedData'] {
+    const lowerText = text.toLowerCase();
+
+    // 작물 감지
+    const crops = ['고추', 'pepper', '토마토', 'tomato', '딸기', 'strawberry', '상추', 'lettuce', '오이', 'cucumber'];
+    const detectedCrop = crops.find(crop => lowerText.includes(crop));
+
+    // 수량 감지 (숫자 + 단위)
+    const quantityMatch = text.match(/(\d+(?:\.\d+)?)\s*(kg|킬로|개|box|박스|포기)/i);
+    const quantity = quantityMatch ? parseFloat(quantityMatch[1]) : undefined;
+    const unit = quantityMatch ? quantityMatch[2] : undefined;
+
+    // 행동 감지
+    let action = 'note';
+    if (lowerText.includes('수확') || lowerText.includes('harvest')) action = 'harvest';
+    else if (lowerText.includes('심었') || lowerText.includes('plant')) action = 'planted';
+    else if (lowerText.includes('물') || lowerText.includes('water')) action = 'watered';
+    else if (lowerText.includes('비료') || lowerText.includes('fertilize')) action = 'fertilized';
+
+    return {
+        crop: detectedCrop,
+        quantity,
+        unit,
+        action
+    };
 }
 
 export default function VoiceLogPage() {
@@ -15,6 +49,7 @@ export default function VoiceLogPage() {
     const [currentTranscript, setCurrentTranscript] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<VoiceLog['category']>('observation');
     const [isSupported, setIsSupported] = useState(true);
+    const [showParsedData, setShowParsedData] = useState(false);
     const recognitionRef = useRef<any>(null);
 
     useEffect(() => {
@@ -29,7 +64,7 @@ export default function VoiceLogPage() {
             const recognition = new SpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
-            recognition.lang = 'en-US';
+            recognition.lang = 'ko-KR'; // 한국어 지원 추가
 
             recognition.onresult = (event: any) => {
                 let interimTranscript = '';
@@ -92,11 +127,21 @@ export default function VoiceLogPage() {
     };
 
     const addLog = (text: string) => {
+        // 🤖 AI 파싱 실행
+        const parsedData = parseVoiceInput(text);
+
+        // 자동 카테고리 설정
+        let autoCategory = selectedCategory;
+        if (parsedData?.action === 'harvest') autoCategory = 'harvest';
+
         const newLog: VoiceLog = {
             id: Date.now().toString(),
             text,
             timestamp: new Date(),
-            category: selectedCategory,
+            category: autoCategory,
+            parsedData: parsedData && Object.keys(parsedData).some(k => parsedData[k as keyof typeof parsedData] !== undefined)
+                ? parsedData
+                : undefined,
         };
 
         const updatedLogs = [newLog, ...logs];
@@ -106,6 +151,8 @@ export default function VoiceLogPage() {
         localStorage.setItem('voiceLogs', JSON.stringify(updatedLogs));
 
         setCurrentTranscript('');
+        setShowParsedData(true);
+        setTimeout(() => setShowParsedData(false), 3000);
     };
 
     const deleteLog = (id: string) => {
@@ -124,6 +171,8 @@ export default function VoiceLogPage() {
                 return 'bg-red-100 text-red-800';
             case 'note':
                 return 'bg-yellow-100 text-yellow-800';
+            case 'harvest':
+                return 'bg-emerald-100 text-emerald-800';
             default:
                 return 'bg-gray-100 text-gray-800';
         }
@@ -139,6 +188,8 @@ export default function VoiceLogPage() {
                 return '⚠️';
             case 'note':
                 return '📝';
+            case 'harvest':
+                return '🌾';
             default:
                 return '💬';
         }
@@ -188,8 +239,8 @@ export default function VoiceLogPage() {
                     <button
                         onClick={isRecording ? stopRecording : startRecording}
                         className={`w-32 h-32 rounded-full flex items-center justify-center text-white text-4xl transition-all duration-300 shadow-lg ${isRecording
-                                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                                : 'bg-green-600 hover:bg-green-700'
+                            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                            : 'bg-green-600 hover:bg-green-700'
                             }`}
                     >
                         {isRecording ? '⏹️' : '🎤'}
@@ -206,8 +257,8 @@ export default function VoiceLogPage() {
                                 key={category}
                                 onClick={() => setSelectedCategory(category)}
                                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedCategory === category
-                                        ? getCategoryColor(category)
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    ? getCategoryColor(category)
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                             >
                                 {getCategoryIcon(category)} {category.charAt(0).toUpperCase() + category.slice(1)}
@@ -219,6 +270,36 @@ export default function VoiceLogPage() {
                     {currentTranscript && (
                         <div className="mt-6 w-full max-w-2xl bg-white rounded-lg shadow p-4">
                             <p className="text-gray-700 italic">"{currentTranscript}"</p>
+                        </div>
+                    )}
+
+                    {/* 🤖 AI 파싱 결과 표시 */}
+                    {showParsedData && logs.length > 0 && logs[0].parsedData && (
+                        <div className="mt-4 w-full max-w-2xl bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg shadow-md p-4 border-2 border-emerald-200 animate-fade-in">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-2xl">🤖</span>
+                                <h4 className="font-bold text-emerald-700">AI가 자동으로 인식했어요!</h4>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                                {logs[0].parsedData.crop && (
+                                    <div className="bg-white rounded-lg p-2 text-center">
+                                        <div className="text-xs text-gray-500">작물</div>
+                                        <div className="font-bold text-emerald-600">{logs[0].parsedData.crop}</div>
+                                    </div>
+                                )}
+                                {logs[0].parsedData.quantity && (
+                                    <div className="bg-white rounded-lg p-2 text-center">
+                                        <div className="text-xs text-gray-500">수량</div>
+                                        <div className="font-bold text-blue-600">{logs[0].parsedData.quantity} {logs[0].parsedData.unit}</div>
+                                    </div>
+                                )}
+                                {logs[0].parsedData.action && (
+                                    <div className="bg-white rounded-lg p-2 text-center">
+                                        <div className="text-xs text-gray-500">작업</div>
+                                        <div className="font-bold text-purple-600">{logs[0].parsedData.action}</div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

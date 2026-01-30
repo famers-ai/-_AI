@@ -22,7 +22,10 @@ export interface DashboardData {
 }
 
 export async function fetchDashboardData(city: string = "San Francisco"): Promise<DashboardData> {
-    const res = await fetch(`${API_BASE_url}/dashboard?crop_type=Strawberries&city=${encodeURIComponent(city)}`, { cache: "no-store" });
+    const res = await fetch(`${API_BASE_url}/dashboard?crop_type=Strawberries&city=${encodeURIComponent(city)}`, {
+        cache: "no-store",
+        next: { revalidate: 0 } // 추가 보장: Next.js 15+ 호환
+    });
     if (!res.ok) {
         throw new Error("Failed to fetch dashboard data");
     }
@@ -38,7 +41,10 @@ export async function fetchAIAnalysis(crop: string, temp: number, humidity: numb
         wind: wind.toString()
     });
 
-    const res = await fetch(`${API_BASE_url}/ai/analyze?${params}`);
+    const res = await fetch(`${API_BASE_url}/ai/analyze?${params}`, {
+        cache: "no-store",
+        next: { revalidate: 0 }
+    });
     if (!res.ok) {
         throw new Error("AI Analysis failed");
     }
@@ -52,6 +58,7 @@ export async function uploadImageForDiagnosis(file: File) {
     const res = await fetch(`${API_BASE_url}/ai/diagnose`, {
         method: "POST",
         body: formData,
+        cache: "no-store"
     });
 
     if (!res.ok) {
@@ -66,19 +73,27 @@ export async function fetchPestForecast(crop: string, lat: number, lon: number) 
         lat: lat.toString(),
         lon: lon.toString()
     });
-    const res = await fetch(`${API_BASE_url}/pest/forecast?${params}`);
+    const res = await fetch(`${API_BASE_url}/pest/forecast?${params}`, {
+        cache: "no-store",
+        next: { revalidate: 0 }
+    });
     if (!res.ok) throw new Error("Failed to fetch forecast");
     return res.json();
 }
 
 export async function fetchMarketPrices(crop: string) {
-    const res = await fetch(`${API_BASE_url}/market/prices?crop_type=${crop}`);
+    const res = await fetch(`${API_BASE_url}/market/prices?crop_type=${crop}`, {
+        cache: "no-store",
+        next: { revalidate: 0 }
+    });
     if (!res.ok) throw new Error("Failed to fetch market prices");
     return res.json();
 }
 
 export async function fetchUserProfile() {
-    const res = await fetch(`${API_BASE_url}/users/me`);
+    const res = await fetch(`${API_BASE_url}/users/me`, {
+        cache: "no-store"
+    });
     if (res.status === 404) return null; // Benign case: User not logged in
     if (!res.ok) throw new Error("Failed to fetch user profile");
     return res.json();
@@ -89,6 +104,7 @@ export async function updateUserTerms(agreed: boolean) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agreed }),
+        cache: "no-store"
     });
     if (!res.ok) throw new Error("Failed to update terms status");
     return res.json();
@@ -99,13 +115,17 @@ export async function recordSensorData(data: any) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        cache: "no-store"
     });
     if (!res.ok) throw new Error("Failed to record sensor data");
     return res.json();
 }
 
 export async function fetchWeeklyReport() {
-    const res = await fetch(`${API_BASE_url}/reports/weekly`, { cache: "no-store" });
+    const res = await fetch(`${API_BASE_url}/reports/weekly`, {
+        cache: "no-store",
+        next: { revalidate: 0 }
+    });
     if (!res.ok) throw new Error("Failed to fetch weekly report");
     return res.json();
 }

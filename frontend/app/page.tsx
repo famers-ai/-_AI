@@ -6,6 +6,7 @@ import { Loader2, RefreshCw, MapPin, Search, PlusCircle } from "lucide-react";
 import clsx from "clsx";
 import TermsAgreementModal from "@/components/TermsAgreementModal";
 import DataInputModal from "@/components/DataInputModal";
+import { getFarmCondition, getVPDSignal } from "@/lib/farm-signals";
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -155,6 +156,16 @@ export default function Dashboard() {
     );
   }
 
+  // 농사 컨디션 계산
+  const farmCondition = getFarmCondition(
+    data.indoor.vpd,
+    data.indoor.temperature,
+    data.indoor.humidity,
+    data.weather.rain
+  );
+
+  const vpdSignal = getVPDSignal(data.indoor.vpd);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -198,6 +209,25 @@ export default function Dashboard() {
           <button onClick={() => loadData()} className="text-sm text-slate-400 hover:text-emerald-600 font-medium flex items-center gap-1 px-2">
             <RefreshCw size={14} />
           </button>
+        </div>
+      </div>
+
+      {/* 🚜 오늘의 농사 컨디션 배너 */}
+      <div className={clsx(
+        "p-4 md:p-6 rounded-2xl border-2 shadow-sm transition-all",
+        farmCondition.bgColor,
+        farmCondition.borderColor
+      )}>
+        <div className="flex items-center gap-3">
+          <div className="text-4xl md:text-5xl">{farmCondition.emoji}</div>
+          <div className="flex-1">
+            <h3 className={clsx("text-lg md:text-xl font-bold", farmCondition.color)}>
+              {farmCondition.message}
+            </h3>
+            <p className="text-sm text-slate-600 mt-1">
+              실내 VPD: {vpdSignal.emoji} {data.indoor.vpd.toFixed(2)} kPa - {vpdSignal.message}
+            </p>
+          </div>
         </div>
       </div>
 

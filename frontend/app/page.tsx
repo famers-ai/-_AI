@@ -162,10 +162,19 @@ export default function Dashboard() {
 
   function handleCitySubmit(e: React.FormEvent) {
     e.preventDefault();
-    setCity(tempCity);
+
+    // Validation: Check for empty input
+    if (!tempCity.trim()) {
+      setLocationError("Please enter a valid city name.");
+      return;
+    }
+
+    // Optimization: Prevent duplicate requests
+    if (loading) return;
+
     setIsEditingLocation(false);
     // Explicitly load data since we removed the useEffect
-    loadData(tempCity);
+    loadData(tempCity.trim());
   }
 
   // Handle "Use My Location" button

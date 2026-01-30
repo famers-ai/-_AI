@@ -52,22 +52,29 @@ export default function Dashboard() {
 
   // Strategy 2: Check for saved location or show setup modal on first visit
   useEffect(() => {
-    const savedLoc = loadSavedLocation();
+    try {
+      const savedLoc = loadSavedLocation();
 
-    if (savedLoc) {
-      // Load from saved location
-      console.log('📍 Using saved location:', savedLoc.name);
-      if (savedLoc.lat && savedLoc.lon) {
-        loadData(undefined, savedLoc.lat, savedLoc.lon);
-      } else if (savedLoc.city) {
-        setCity(savedLoc.city);
-        setTempCity(savedLoc.city);
+      if (savedLoc) {
+        // Load from saved location
+        console.log('📍 Using saved location:', savedLoc.name);
+        if (savedLoc.lat && savedLoc.lon) {
+          loadData(undefined, savedLoc.lat, savedLoc.lon);
+        } else if (savedLoc.city) {
+          setCity(savedLoc.city);
+          setTempCity(savedLoc.city);
+          loadData(savedLoc.city);
+        }
+      } else if (isFirstVisit()) {
+        // First visit: show location setup modal
+        setShowLocationSetup(true);
+      } else {
+        // Regular visit without saved location
+        loadData();
       }
-    } else if (isFirstVisit()) {
-      // First visit: show location setup modal
-      setShowLocationSetup(true);
-    } else {
-      // Regular visit without saved location
+    } catch (error) {
+      // localStorage disabled (Safari private mode, etc.)
+      console.warn('localStorage unavailable, using default location', error);
       loadData();
     }
   }, []);
@@ -115,8 +122,11 @@ export default function Dashboard() {
           timestamp: Date.now()
         };
         saveLocation(locationToSave);
-        setCity(dashboardData.location.name);
-        setTempCity(dashboardData.location.name);
+        // Only update city if it's different to prevent loops
+        if (city !== dashboardData.location.name) {
+          setCity(dashboardData.location.name);
+          setTempCity(dashboardData.location.name);
+        }
       } else if (cityName && dashboardData.location.name) {
         // Save city-based location
         const locationToSave: SavedLocation = {
@@ -140,6 +150,8 @@ export default function Dashboard() {
     e.preventDefault();
     setCity(tempCity);
     setIsEditingLocation(false);
+    // Explicitly load data since we removed the useEffect
+    loadData(tempCity);
   }
 
   // Handle "Use My Location" button
@@ -188,12 +200,7 @@ export default function Dashboard() {
     loadData(); // Load with default
   };
 
-  // Effect to reload when city changes
-  useEffect(() => {
-    if (city !== "San Francisco" || !loading) {
-      loadData();
-    }
-  }, [city]);
+  // Removed: This caused infinite loop because loadData() can call setCity()
 
   // LEGAL GUARD: Check terms before any sensitive action
   const checkTermsAndAction = (action: () => void) => {

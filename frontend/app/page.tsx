@@ -225,7 +225,11 @@ export default function Dashboard() {
               {farmCondition.message}
             </h3>
             <p className="text-sm text-slate-600 mt-1">
-              실내 VPD: {vpdSignal.emoji} {data.indoor.vpd.toFixed(2)} kPa - {vpdSignal.message}
+              실내 VPD: {vpdSignal.emoji} {
+                data.indoor.vpd !== null && data.indoor.vpd !== undefined && !isNaN(data.indoor.vpd)
+                  ? `${data.indoor.vpd.toFixed(2)} kPa`
+                  : '측정 중'
+              } - {vpdSignal.message}
             </p>
           </div>
         </div>

@@ -24,7 +24,7 @@ export interface DashboardData {
 export async function fetchDashboardData(city: string = "San Francisco"): Promise<DashboardData> {
     const res = await fetch(`${API_BASE_url}/dashboard?crop_type=Strawberries&city=${encodeURIComponent(city)}`, {
         cache: "no-store",
-        next: { revalidate: 0 } // 추가 보장: Next.js 15+ 호환
+        next: { revalidate: 0 } // Additional guarantee: Next.js 15+ compatible
     });
     if (!res.ok) {
         throw new Error("Failed to fetch dashboard data");

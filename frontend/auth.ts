@@ -17,7 +17,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ],
     session: {
         strategy: "jwt",
-        maxAge: 30 * 24 * 60 * 60, // 30 days - 농부들이 오래 로그인 유지
+        maxAge: 30 * 24 * 60 * 60, // 30 days - farmers stay logged in longer
     },
     callbacks: {
         async signIn({ user, account, profile }) {

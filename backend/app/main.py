@@ -58,6 +58,8 @@ app.include_router(sensors.router, prefix="/api/sensors", tags=["Sensors"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(location.router, prefix="/api/location", tags=["Location"])
+from app.api import voice_logs
+app.include_router(voice_logs.router, prefix="/api/voice-logs", tags=["Voice Logs"])
 from app.api import admin
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 

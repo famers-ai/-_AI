@@ -19,6 +19,16 @@ def init_db():
                  (timestamp TEXT, crop_type TEXT, message TEXT, severity TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS user_prefs
                  (key TEXT PRIMARY KEY, value TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS voice_logs
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  user_id TEXT,
+                  text TEXT,
+                  category TEXT,
+                  parsed_crop TEXT,
+                  parsed_quantity REAL,
+                  parsed_unit TEXT,
+                  parsed_action TEXT,
+                  timestamp TEXT)''')
     conn.commit()
     conn.close()
 

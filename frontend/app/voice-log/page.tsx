@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Trash2, Calendar } from 'lucide-react';
+import { fetchVoiceLogs, createVoiceLog, deleteVoiceLog } from '@/lib/api';
 
 interface VoiceLog {
-    id: string;
+    id: number;
     text: string;
     timestamp: Date;
     category: 'observation' | 'task' | 'issue' | 'note' | 'harvest';
@@ -94,6 +95,20 @@ export default function VoiceLogPage() {
     const recognitionRef = useRef<any>(null);
 
     useEffect(() => {
+        // Fetch logs on mount
+        fetchVoiceLogs()
+            .then(data => {
+                // Parse timestamps
+                const formatted = data.map((d: any) => ({
+                    ...d,
+                    timestamp: new Date(d.timestamp)
+                }));
+                setLogs(formatted);
+            })
+            .catch(err => console.error("Failed to fetch logs", err));
+    }, []);
+
+    useEffect(() => {
         // Check browser support
         if (typeof window !== 'undefined') {
             const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -171,30 +186,44 @@ export default function VoiceLogPage() {
 
                 // Auto-categorize based on action
                 let autoCategory: VoiceLog['category'] = selectedCategory;
-                if (parsedData.action === 'harvest') autoCategory = 'harvest';
-                else if (parsedData.action === 'pest_issue') autoCategory = 'issue';
-                else if (parsedData.action === 'planted' || parsedData.action === 'watered' || parsedData.action === 'fertilized' || parsedData.action === 'pruned') autoCategory = 'task';
+                if (parsedData?.action === 'harvest') autoCategory = 'harvest';
+                else if (parsedData?.action === 'pest_issue') autoCategory = 'issue';
+                else if (parsedData?.action === 'planted' || parsedData?.action === 'watered' || parsedData?.action === 'fertilized' || parsedData?.action === 'pruned') autoCategory = 'task';
 
-                const newLog: VoiceLog = {
-                    id: Date.now().toString(),
+                const newLogPayload = {
                     text: currentTranscript.trim(),
-                    timestamp: new Date(),
                     category: autoCategory,
                     parsedData
                 };
 
-                setLogs(prev => [newLog, ...prev]);
+                // Optimistic Update or Wait for Server? user experience is better with wait here as it confirms save
+                createVoiceLog(newLogPayload).then(savedLog => {
+                    setLogs(prev => [{
+                        ...savedLog,
+                        timestamp: new Date(savedLog.timestamp)
+                    }, ...prev]);
+                }).catch(err => alert("Failed to save log"));
+
                 setCurrentTranscript('');
             }
         }
     };
 
-    const deleteLog = (id: string) => {
-        setLogs(prev => prev.filter(log => log.id !== id));
+    const deleteLog = async (id: number) => {
+        try {
+            await deleteVoiceLog(id);
+            setLogs(prev => prev.filter(log => log.id !== id));
+        } catch (e) {
+            alert("Failed to delete log");
+        }
     };
 
-    const clearAllLogs = () => {
-        if (confirm('Are you sure you want to delete all logs?')) {
+    const clearAllLogs = async () => {
+        if (confirm('Are you sure you want to delete all logs? This cannot be undone.')) {
+            // Sequential delete for now as we don't have bulk delete endpoint
+            for (const log of logs) {
+                await deleteVoiceLog(log.id).catch(console.error);
+            }
             setLogs([]);
         }
     };
@@ -250,8 +279,8 @@ export default function VoiceLogPage() {
                     <button
                         onClick={isRecording ? stopRecording : startRecording}
                         className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${isRecording
-                                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                                : 'bg-emerald-500 hover:bg-emerald-600'
+                            ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                            : 'bg-emerald-500 hover:bg-emerald-600'
                             } shadow-lg`}
                     >
                         {isRecording ? (
@@ -282,8 +311,8 @@ export default function VoiceLogPage() {
                                 key={cat}
                                 onClick={() => setSelectedCategory(cat)}
                                 className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${selectedCategory === cat
-                                        ? getCategoryColor(cat)
-                                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                    ? getCategoryColor(cat)
+                                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                                     }`}
                             >
                                 {getCategoryIcon(cat)} {cat.charAt(0).toUpperCase() + cat.slice(1)}

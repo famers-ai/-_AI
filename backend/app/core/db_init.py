@@ -3,9 +3,8 @@ import sqlite3
 import os
 import logging
 
-# Database path (relative to app/core)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DB_NAME = os.path.join(BASE_DIR, "farm_data.db")
+from app.core.config import DB_NAME
+
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +108,10 @@ def init_real_data_schema():
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 text TEXT NOT NULL,
                 category TEXT CHECK(category IN ('observation', 'task', 'issue', 'note')),
+                parsed_crop TEXT,
+                parsed_quantity REAL,
+                parsed_unit TEXT,
+                parsed_action TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
         ''')

@@ -43,14 +43,22 @@ export default function LocationDisplay() {
         }
     };
 
-    const handleLocationSet = (city: string, region: string, country: string) => {
-        setLocation({
-            city,
-            region,
-            country,
+    const handleLocationSet = (city?: string, lat?: number, lon?: number) => {
+        // If we have coordinates, we might not have city name immediately
+        // In a real app, we might want to reverse geocode here or trigger a backend update
+        // For now, update local state with what we have
+
+        setLocation(prev => ({
+            ...prev,
+            city: city || (lat && lon ? "Current Location" : prev.city),
+            region: null, // Reset as we don't know it yet
+            country: null,
             hasLocation: true
-        });
+        }));
         setShowModal(false);
+
+        // Optionally reload page or trigger parent update if needed
+        // window.location.reload(); 
     };
 
     if (loading) {
@@ -93,7 +101,7 @@ export default function LocationDisplay() {
 
             <LocationSetupModal
                 isOpen={showModal}
-                onClose={() => setShowModal(false)}
+                onSkip={() => setShowModal(false)}
                 onLocationSet={handleLocationSet}
             />
         </>

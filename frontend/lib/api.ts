@@ -145,3 +145,33 @@ export async function fetchWeeklyReport() {
     if (!res.ok) throw new Error("Failed to fetch weekly report");
     return res.json();
 }
+
+// Voice Logs API
+export async function fetchVoiceLogs() {
+    const res = await fetch(`${API_BASE_url}/voice-logs`, {
+        cache: "no-store",
+        next: { revalidate: 0 }
+    });
+    if (!res.ok) throw new Error("Failed to fetch voice logs");
+    return res.json();
+}
+
+export async function createVoiceLog(logData: any) {
+    const res = await fetch(`${API_BASE_url}/voice-logs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(logData),
+        cache: "no-store"
+    });
+    if (!res.ok) throw new Error("Failed to create voice log");
+    return res.json();
+}
+
+export async function deleteVoiceLog(id: number) {
+    const res = await fetch(`${API_BASE_url}/voice-logs/${id}`, {
+        method: "DELETE",
+        cache: "no-store"
+    });
+    if (!res.ok) throw new Error("Failed to delete voice log");
+    return res.json();
+}

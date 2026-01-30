@@ -21,8 +21,17 @@ export interface DashboardData {
     crop: string;
 }
 
-export async function fetchDashboardData(city: string = "San Francisco"): Promise<DashboardData> {
-    const res = await fetch(`${API_BASE_url}/dashboard?crop_type=Strawberries&city=${encodeURIComponent(city)}`, {
+export async function fetchDashboardData(city: string = "San Francisco", lat?: number, lon?: number): Promise<DashboardData> {
+    let url = `${API_BASE_url}/dashboard?crop_type=Strawberries`;
+
+    if (lat && lon) {
+        url += `&lat=${lat}&lon=${lon}`;
+        if (city) url += `&city=${encodeURIComponent(city)}`;
+    } else {
+        url += `&city=${encodeURIComponent(city)}`;
+    }
+
+    const res = await fetch(url, {
         cache: "no-store",
         next: { revalidate: 0 } // Additional guarantee: Next.js 15+ compatible
     });

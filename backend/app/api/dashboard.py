@@ -12,22 +12,39 @@ router = APIRouter()
 
 @router.get("")
 async def get_dashboard_data(
-    city: str,
+    city: str = None,
+    lat: float = None,
+    lon: float = None,
     crop_type: str = "Strawberries",
-    user_id: str = "test_user_001" # Auth placeholder
+    user_id: str = "test_user_001"
 ):
     try:
-        # 1. Fetch Real Weather (External API is 'Real' data)
-        try:
-            lat, lon, location_name = get_coordinates_from_city(city)
+        location_name = city or "Unknown Location"
+        
+        # 1. Determine Location (Coordinates vs City Name)
+        if lat is not None and lon is not None:
+             # Direct coordinates provided (e.g. from "Use My Location")
+             # We might want to reverse geocode to get a name, but data handling is primary
+             # Simple reverse geocode for name if city is missing
+             if not city:
+                 location_name = f"{lat:.2f}, {lon:.2f}"
+                 # Ideally call a reverse geocode service here, or just let frontend handle the name
+        else:
+            # Fallback to city search
+            if not city:
+                city = "San Francisco" # Default
+                
+            lat, lon, found_name = get_coordinates_from_city(city)
+            if found_name:
+                location_name = found_name
+            
             if not lat or not lon:
-                # Return default data instead of crashing
                 return {
                     "location": {
                         "name": city,
                         "lat": None,
                         "lon": None,
-                        "error": "City not found. Please check spelling or try a nearby major city."
+                        "error": "City not found. Please try a major city name."
                     },
                     "weather": {
                         "temperature": None,
@@ -45,34 +62,10 @@ async def get_dashboard_data(
                     },
                     "crop": crop_type
                 }
-        except Exception as city_error:
-            print(f"City lookup error: {city_error}")
-            # Return graceful fallback instead of 500 error
-            return {
-                "location": {
-                    "name": city,
-                    "lat": None,
-                    "lon": None,
-                    "error": "Unable to find location. Please try a different city name."
-                },
-                "weather": {
-                    "temperature": None,
-                    "humidity": None,
-                    "rain": None,
-                    "wind_speed": None
-                },
-                "indoor": {
-                    "temperature": None,
-                    "humidity": None,
-                    "vpd": None,
-                    "vpd_status": "No Data - Please Record",
-                    "soil_moisture": None,
-                    "timestamp": None
-                },
-                "crop": crop_type
-            }
-            
+
+        # 2. Fetch Weather Data using coordinates
         weather = fetch_weather_data(lat, lon)
+
         if weather is None:
             weather = {
                 "temperature": None,

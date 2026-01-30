@@ -31,14 +31,14 @@ def fetch_weather_data(lat=37.7749, lon=-122.4194):
 @lru_cache(maxsize=128)
 def get_coordinates_from_city(city_name):
     """
-    Enhanced geocoding with better accuracy for US cities
-    Prioritizes US locations and provides detailed location names
+    Enhanced geocoding with smart prioritization
+    Selects best match based on population and relevance (removing US bias)
     """
     try:
         url = "https://geocoding-api.open-meteo.com/v1/search"
         params = {
             "name": city_name,
-            "count": 10,  # Get more results for better matching
+            "count": 10,
             "language": "en",
             "format": "json"
         }
@@ -50,40 +50,28 @@ def get_coordinates_from_city(city_name):
         
         results = data["results"]
         
-        # Prioritize US locations
-        us_results = [r for r in results if r.get("country_code") == "US"]
-        if us_results:
-            results = us_results
+        # Sort by population (descending) to get the most major city
+        # This fixes the "Tokyo Hill, Texas" vs "Tokyo, Japan" issue
+        sorted_results = sorted(results, key=lambda x: x.get("population", 0) or 0, reverse=True)
         
-        # Select best match
-        # Prefer results with higher population or admin level
-        best_match = results[0]
-        for result in results:
-            # Prioritize by population if available
-            if result.get("population", 0) > best_match.get("population", 0):
-                best_match = result
+        best_match = sorted_results[0]
         
         lat = best_match.get("latitude")
         lon = best_match.get("longitude")
         country = best_match.get("country", "")
         country_code = best_match.get("country_code", "")
         state = best_match.get("admin1", "")  # State/Province
-        county = best_match.get("admin2", "")  # County
         
-        # Format location name with detail
+        # Format location name intelligently
         location_name = f"{best_match['name']}"
         
-        # Add state for US locations
+        # Add context (State for US, Country for others)
         if country_code == "US" and state:
             location_name += f", {state}"
-        elif state and not country_code == "US":
-            location_name += f", {state}"
-        
-        # Add country if not US
-        if country_code != "US" and country:
+        elif country:
             location_name += f", {country}"
-        
-        print(f"📍 Geocoded '{city_name}' -> {location_name} ({lat}, {lon})")
+            
+        print(f"📍 Geocoded '{city_name}' -> {location_name} ({lat}, {lon}) (Pop: {best_match.get('population', 'N/A')})")
         
         return lat, lon, location_name
         

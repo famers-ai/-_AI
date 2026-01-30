@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchDashboardData, fetchAIAnalysis, fetchUserProfile, type DashboardData } from "@/lib/api";
-import { Loader2, RefreshCw, MapPin, Search, PlusCircle } from "lucide-react";
+import { Loader2, RefreshCw, MapPin, Search, PlusCircle, LocateFixed } from "lucide-react";
 import clsx from "clsx";
 import TermsAgreementModal from "@/components/TermsAgreementModal";
 import DataInputModal from "@/components/DataInputModal";
@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [selectedCropId, setSelectedCropId] = useState(DEFAULT_CROP);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [tempCity, setTempCity] = useState(city);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   // User & Terms State
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -30,12 +31,13 @@ export default function Dashboard() {
   const [analyzing, setAnalyzing] = useState(false);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
 
-
-
-  async function loadData() {
+  async function loadData(cityName?: string, lat?: number, lon?: number) {
     setLoading(true);
     try {
-      let dashboardData = await fetchDashboardData(city); // use let to allow modification
+      // Use provided city or current state city. If lat/lon provided, city is ignored by backend logic usually
+      const targetCity = cityName || city;
+
+      let dashboardData = await fetchDashboardData(targetCity, lat, lon);
 
       // Fetch user profile to check terms agreement
       try {
@@ -63,10 +65,17 @@ export default function Dashboard() {
         console.warn("Failed to fetch user profile", err);
       }
 
+      // Update city state if backend returns a resolved name and we used coordinates
+      if (lat && lon && dashboardData.location.name) {
+        // Keep the city state in sync with what's displayed for future refreshes
+        // but don't trigger a re-fetch loop
+        setCity(dashboardData.location.name);
+        setTempCity(dashboardData.location.name);
+      }
+
       setData(dashboardData);
     } catch (e) {
       console.error(e);
-      // Retry logic could go here, but for now just clear data to show error state
       setData(null);
     } finally {
       setLoading(false);
@@ -75,14 +84,44 @@ export default function Dashboard() {
 
   function handleCitySubmit(e: React.FormEvent) {
     e.preventDefault();
-    setCity(tempCity);
+    setCity(tempCity); // This triggers useEffect
     setIsEditingLocation(false);
-
   }
 
-  // Effect to reload when city changes (skip initial load as it's handled by empty dep array effect, 
-  // but actually let's just combine them)
+  // Handle "Use My Location"
+  function handleUseCurrentLocation() {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsGettingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        // Load data with coordinates
+        loadData(undefined, latitude, longitude);
+        setIsGettingLocation(false);
+        setIsEditingLocation(false);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        setIsGettingLocation(false);
+        let msg = "Unable to retrieve your location";
+        if (error.code === 1) msg = "Location permission denied";
+        else if (error.code === 2) msg = "Location unavailable";
+        else if (error.code === 3) msg = "Location request timed out";
+        alert(msg);
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  }
+
+  // Effect to reload when city changes
   useEffect(() => {
+    // Only load if not already loading from coordinate update to prevent double fetch
+    // Actually simplicity is better: just load.
     loadData();
   }, [city]);
 
@@ -124,9 +163,8 @@ export default function Dashboard() {
   };
 
   const handleDataSubmit = (sensorData: any) => {
-    // Refresh dashboard data after input (in a real app, optimize this)
+    // Refresh dashboard data after input
     loadData();
-    // Maybe show a toast notification here
   };
 
   if (loading) {
@@ -198,6 +236,9 @@ export default function Dashboard() {
                 placeholder="Enter City..."
                 autoFocus
               />
+              <button type="button" onClick={handleUseCurrentLocation} className="text-slate-400 hover:text-emerald-600" title="Use My Location">
+                {isGettingLocation ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
+              </button>
               <button type="submit" className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-medium hover:bg-emerald-200">
                 Set
               </button>

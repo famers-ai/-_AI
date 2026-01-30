@@ -5,8 +5,7 @@ import os
 
 router = APIRouter()
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DB_NAME = os.path.join(BASE_DIR, "farm_data.db")
+from app.core.config import DB_NAME
 
 @router.delete("/reset-data")
 async def reset_database(confirm: bool = Query(False, description="Set to true to confirm deletion")):

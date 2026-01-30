@@ -6,8 +6,9 @@ Updates existing database schema with new columns if they don't exist.
 import sqlite3
 import os
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "farm_data.db")
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app.core.config import DB_NAME as DB_PATH
 
 def migrate_db():
     print(f"Migrating database at: {DB_PATH}")

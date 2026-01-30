@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Database path
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DB_NAME = os.path.join(BASE_DIR, "farm_data.db")
+from app.core.config import DB_NAME
 
 def get_db_connection():
     conn = sqlite3.connect(DB_NAME)

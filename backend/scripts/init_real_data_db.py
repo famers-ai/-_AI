@@ -7,9 +7,11 @@ import sqlite3
 import os
 from datetime import datetime
 
-# Database path
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_NAME = os.path.join(BASE_DIR, "farm_data.db")
+import sys
+# Add backend directory to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.core.config import DB_NAME
 
 def init_real_data_schema():
     """Initialize database schema for real user data"""
@@ -93,6 +95,10 @@ def init_real_data_schema():
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             text TEXT NOT NULL,
             category TEXT CHECK(category IN ('observation', 'task', 'issue', 'note')),
+            parsed_crop TEXT,
+            parsed_quantity REAL,
+            parsed_unit TEXT,
+            parsed_action TEXT,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     ''')

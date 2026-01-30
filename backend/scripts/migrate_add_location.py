@@ -9,8 +9,9 @@ import os
 from datetime import datetime
 
 # Database path
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "farm_data.db")
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app.core.config import DB_NAME as DB_PATH
 
 def migrate_add_location_fields():
     """Add location consent and city-level location fields to users table"""

@@ -10,8 +10,8 @@ import os
 import sys
 
 # Database path
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "farm_data.db")
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app.core.config import DB_NAME as DB_PATH
 
 def cleanup_production_data():
     """Remove all sample/test data, keep only real user data"""

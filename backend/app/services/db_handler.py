@@ -5,8 +5,7 @@ from datetime import datetime
 
 # Robustly find the DB file in the backend root
 # Structure: backend/app/services/db_handler.py
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DB_NAME = os.path.join(BASE_DIR, "farm_data.db")
+from app.core.config import DB_NAME
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)

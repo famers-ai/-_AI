@@ -3,8 +3,7 @@ import sqlite3
 from typing import Any
 
 # Load environment variables from .env file
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DB_NAME = os.path.join(BASE_DIR, "farm_data.db")
+from app.core.config import DB_NAME
 
 def get_db_connection():
     """

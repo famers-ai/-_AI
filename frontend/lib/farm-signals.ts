@@ -1,7 +1,7 @@
 // 농부들을 위한 직관적인 상태 표시 유틸리티
 
 export interface FarmCondition {
-    status: 'excellent' | 'good' | 'caution' | 'warning';
+    status: 'excellent' | 'good' | 'caution' | 'warning' | 'unknown';
     emoji: string;
     message: string;
     color: string;
@@ -10,32 +10,53 @@ export interface FarmCondition {
 }
 
 /**
+ * 안전한 숫자 변환 (null/undefined/NaN 방어)
+ */
+function safeNumber(value: any, defaultValue: number = 0): number {
+    if (value === null || value === undefined || isNaN(value)) {
+        return defaultValue;
+    }
+    return Number(value);
+}
+
+/**
  * VPD 값을 기반으로 신호등 색상과 메시지를 반환
  */
-export function getVPDSignal(vpd: number): {
+export function getVPDSignal(vpd: number | null | undefined): {
     color: string;
     emoji: string;
     message: string;
 } {
-    if (vpd < 0.4) {
+    // null/undefined 체크
+    if (vpd === null || vpd === undefined || isNaN(vpd)) {
+        return {
+            color: 'text-gray-600',
+            emoji: '⚪',
+            message: '데이터 없음'
+        };
+    }
+
+    const safeVpd = safeNumber(vpd, 0);
+
+    if (safeVpd < 0.4) {
         return {
             color: 'text-red-600',
             emoji: '🔴',
             message: '위험! 곰팡이 조심!'
         };
-    } else if (vpd < 0.8) {
+    } else if (safeVpd < 0.8) {
         return {
             color: 'text-yellow-600',
             emoji: '🟡',
             message: '주의 필요'
         };
-    } else if (vpd <= 1.2) {
+    } else if (safeVpd <= 1.2) {
         return {
             color: 'text-green-600',
             emoji: '🟢',
             message: '좋음'
         };
-    } else if (vpd <= 1.6) {
+    } else if (safeVpd <= 1.6) {
         return {
             color: 'text-yellow-600',
             emoji: '🟡',
@@ -54,15 +75,32 @@ export function getVPDSignal(vpd: number): {
  * 전체 농사 컨디션을 종합 평가
  */
 export function getFarmCondition(
-    indoorVPD: number,
-    temperature: number,
-    humidity: number,
-    rain: number
+    indoorVPD: number | null | undefined,
+    temperature: number | null | undefined,
+    humidity: number | null | undefined,
+    rain: number | null | undefined
 ): FarmCondition {
-    const vpdSignal = getVPDSignal(indoorVPD);
+    // 데이터 유효성 검사
+    if (indoorVPD === null || indoorVPD === undefined || isNaN(indoorVPD)) {
+        return {
+            status: 'unknown',
+            emoji: '❓',
+            message: '데이터 수집 중...',
+            color: 'text-gray-700',
+            bgColor: 'bg-gray-50',
+            borderColor: 'border-gray-200'
+        };
+    }
+
+    const safeVpd = safeNumber(indoorVPD, 0);
+    const safeTemp = safeNumber(temperature, 70);
+    const safeHumidity = safeNumber(humidity, 50);
+    const safeRain = safeNumber(rain, 0);
+
+    const vpdSignal = getVPDSignal(safeVpd);
 
     // 위험 조건 체크
-    if (indoorVPD < 0.4 || indoorVPD > 1.6) {
+    if (safeVpd < 0.4 || safeVpd > 1.6) {
         return {
             status: 'warning',
             emoji: '⚠️',
@@ -74,7 +112,7 @@ export function getFarmCondition(
     }
 
     // 주의 조건
-    if (indoorVPD < 0.8 || indoorVPD > 1.2) {
+    if (safeVpd < 0.8 || safeVpd > 1.2) {
         return {
             status: 'caution',
             emoji: '🟡',
@@ -86,7 +124,7 @@ export function getFarmCondition(
     }
 
     // 비가 많이 오는 경우
-    if (rain > 10) {
+    if (safeRain > 10) {
         return {
             status: 'caution',
             emoji: '🌧️',
@@ -98,11 +136,11 @@ export function getFarmCondition(
     }
 
     // 온도가 너무 높거나 낮은 경우
-    if (temperature > 95 || temperature < 40) {
+    if (safeTemp > 95 || safeTemp < 40) {
         return {
             status: 'caution',
-            emoji: temperature > 95 ? '🔥' : '❄️',
-            message: temperature > 95 ? '고온 주의' : '저온 주의',
+            emoji: safeTemp > 95 ? '🔥' : '❄️',
+            message: safeTemp > 95 ? '고온 주의' : '저온 주의',
             color: 'text-orange-700',
             bgColor: 'bg-orange-50',
             borderColor: 'border-orange-200'
@@ -123,19 +161,21 @@ export function getFarmCondition(
 /**
  * 온도를 색상으로 표현
  */
-export function getTemperatureColor(temp: number): string {
-    if (temp < 50) return 'text-blue-600';
-    if (temp < 70) return 'text-green-600';
-    if (temp < 85) return 'text-yellow-600';
+export function getTemperatureColor(temp: number | null | undefined): string {
+    const safeTemp = safeNumber(temp, 70);
+    if (safeTemp < 50) return 'text-blue-600';
+    if (safeTemp < 70) return 'text-green-600';
+    if (safeTemp < 85) return 'text-yellow-600';
     return 'text-red-600';
 }
 
 /**
  * 습도를 색상으로 표현
  */
-export function getHumidityColor(humidity: number): string {
-    if (humidity < 30) return 'text-red-600';
-    if (humidity < 50) return 'text-yellow-600';
-    if (humidity <= 70) return 'text-green-600';
+export function getHumidityColor(humidity: number | null | undefined): string {
+    const safeHumidity = safeNumber(humidity, 50);
+    if (safeHumidity < 30) return 'text-red-600';
+    if (safeHumidity < 50) return 'text-yellow-600';
+    if (safeHumidity <= 70) return 'text-green-600';
     return 'text-blue-600';
 }

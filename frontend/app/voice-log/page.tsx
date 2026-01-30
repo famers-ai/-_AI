@@ -15,25 +15,76 @@ interface VoiceLog {
     };
 }
 
-// 🤖 AI 파싱 함수 - 자연어를 구조화된 데이터로 변환
+// 🤖 AI 파싱 함수 - 자연어를 구조화된 데이터로 변환 (개선 버전)
 function parseVoiceInput(text: string): VoiceLog['parsedData'] {
     const lowerText = text.toLowerCase();
 
-    // 작물 감지
-    const crops = ['고추', 'pepper', '토마토', 'tomato', '딸기', 'strawberry', '상추', 'lettuce', '오이', 'cucumber'];
-    const detectedCrop = crops.find(crop => lowerText.includes(crop));
+    // 한글 숫자를 아라비아 숫자로 변환
+    const koreanNumbers: { [key: string]: string } = {
+        '일': '1', '이': '2', '삼': '3', '사': '4', '오': '5',
+        '육': '6', '칠': '7', '팔': '8', '구': '9', '십': '10',
+        '백': '100', '천': '1000', '만': '10000'
+    };
 
-    // 수량 감지 (숫자 + 단위)
-    const quantityMatch = text.match(/(\d+(?:\.\d+)?)\s*(kg|킬로|개|box|박스|포기)/i);
-    const quantity = quantityMatch ? parseFloat(quantityMatch[1]) : undefined;
-    const unit = quantityMatch ? quantityMatch[2] : undefined;
+    let processedText = text;
+    Object.keys(koreanNumbers).forEach(korean => {
+        processedText = processedText.replace(new RegExp(korean, 'g'), koreanNumbers[korean]);
+    });
 
-    // 행동 감지
+    // 작물 감지 (더 많은 작물 추가, 복수형 지원)
+    const cropPatterns = [
+        { pattern: /(고추|pepper|peppers|칠리)/i, name: '고추' },
+        { pattern: /(토마토|tomato|tomatoes)/i, name: '토마토' },
+        { pattern: /(딸기|strawberry|strawberries)/i, name: '딸기' },
+        { pattern: /(상추|lettuce)/i, name: '상추' },
+        { pattern: /(오이|cucumber|cucumbers)/i, name: '오이' },
+        { pattern: /(호박|pumpkin|squash)/i, name: '호박' },
+        { pattern: /(배추|cabbage)/i, name: '배추' },
+        { pattern: /(무|radish)/i, name: '무' },
+        { pattern: /(파|green onion|scallion)/i, name: '파' },
+        { pattern: /(감자|potato|potatoes)/i, name: '감자' },
+    ];
+
+    const detectedCrops = cropPatterns
+        .filter(cp => cp.pattern.test(text))
+        .map(cp => cp.name);
+    const detectedCrop = detectedCrops.length > 0 ? detectedCrops.join(', ') : undefined;
+
+    // 수량 감지 (더 많은 패턴 지원)
+    const quantityPatterns = [
+        /(\d+(?:\.\d+)?)\s*(kg|킬로그램|킬로|키로)/i,
+        /(\d+(?:\.\d+)?)\s*(개|box|박스|상자)/i,
+        /(\d+(?:\.\d+)?)\s*(포기|그루|주)/i,
+        /(\d+(?:\.\d+)?)\s*(톤|ton)/i,
+        /(\d+(?:\.\d+)?)\s*(g|그램|gram)/i,
+        /(\d+(?:\.\d+)?)\s*(lb|파운드|pound)/i,
+    ];
+
+    let quantity: number | undefined;
+    let unit: string | undefined;
+
+    for (const pattern of quantityPatterns) {
+        const match = processedText.match(pattern);
+        if (match) {
+            quantity = parseFloat(match[1]);
+            unit = match[2];
+            // 단위 정규화
+            if (unit.match(/킬로그램|킬로|키로/i)) unit = 'kg';
+            if (unit.match(/그램/i)) unit = 'g';
+            if (unit.match(/박스|상자/i)) unit = 'box';
+            if (unit.match(/파운드/i)) unit = 'lb';
+            break;
+        }
+    }
+
+    // 행동 감지 (더 많은 패턴)
     let action = 'note';
-    if (lowerText.includes('수확') || lowerText.includes('harvest')) action = 'harvest';
-    else if (lowerText.includes('심었') || lowerText.includes('plant')) action = 'planted';
-    else if (lowerText.includes('물') || lowerText.includes('water')) action = 'watered';
-    else if (lowerText.includes('비료') || lowerText.includes('fertilize')) action = 'fertilized';
+    if (lowerText.match(/수확|harvest|땄|딴|캤|캐/)) action = 'harvest';
+    else if (lowerText.match(/심었|심기|plant|파종|씨/)) action = 'planted';
+    else if (lowerText.match(/물|water|관수|급수/)) action = 'watered';
+    else if (lowerText.match(/비료|fertilize|거름|영양/)) action = 'fertilized';
+    else if (lowerText.match(/병|pest|해충|벌레|곰팡이/)) action = 'pest_issue';
+    else if (lowerText.match(/가지치기|pruning|정리/)) action = 'pruned';
 
     return {
         crop: detectedCrop,
@@ -50,9 +101,18 @@ export default function VoiceLogPage() {
     const [selectedCategory, setSelectedCategory] = useState<VoiceLog['category']>('observation');
     const [isSupported, setIsSupported] = useState(true);
     const [showParsedData, setShowParsedData] = useState(false);
+    const [selectedLanguage, setSelectedLanguage] = useState<'ko-KR' | 'en-US'>('ko-KR');
     const recognitionRef = useRef<any>(null);
 
     useEffect(() => {
+        // 브라우저 언어 자동 감지
+        const browserLang = navigator.language;
+        if (browserLang.startsWith('ko')) {
+            setSelectedLanguage('ko-KR');
+        } else {
+            setSelectedLanguage('en-US');
+        }
+
         // Check if browser supports Web Speech API
         if (typeof window !== 'undefined') {
             const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -64,7 +124,7 @@ export default function VoiceLogPage() {
             const recognition = new SpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
-            recognition.lang = 'ko-KR'; // 한국어 지원 추가
+            recognition.lang = selectedLanguage;
 
             recognition.onresult = (event: any) => {
                 let interimTranscript = '';
@@ -105,7 +165,7 @@ export default function VoiceLogPage() {
                 timestamp: new Date(log.timestamp),
             })));
         }
-    }, []);
+    }, [selectedLanguage]); // selectedLanguage 변경 시 재초기화
 
     const startRecording = () => {
         if (!recognitionRef.current) return;
@@ -250,9 +310,31 @@ export default function VoiceLogPage() {
                         {isRecording ? 'Recording... Click to stop' : 'Click to start recording'}
                     </p>
 
+                    {/* 언어 선택 */}
+                    <div className="mt-3 flex justify-center gap-2">
+                        <button
+                            onClick={() => setSelectedLanguage('ko-KR')}
+                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${selectedLanguage === 'ko-KR'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                        >
+                            🇰🇷 한국어
+                        </button>
+                        <button
+                            onClick={() => setSelectedLanguage('en-US')}
+                            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${selectedLanguage === 'en-US'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                        >
+                            🇺🇸 English
+                        </button>
+                    </div>
+
                     {/* Category Selection */}
                     <div className="mt-6 flex flex-wrap justify-center gap-2">
-                        {(['observation', 'task', 'issue', 'note'] as const).map((category) => (
+                        {(['observation', 'task', 'issue', 'note', 'harvest'] as const).map((category) => (
                             <button
                                 key={category}
                                 onClick={() => setSelectedCategory(category)}

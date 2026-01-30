@@ -31,7 +31,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 <div className="flex flex-col h-[80vh] items-center justify-center text-slate-500 p-6">
                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Something went wrong</h2>
                     <p className="text-center mb-6 max-w-sm">
-                        애플리케이션에 오류가 발생했습니다. 잠시 후 다시 시도해주세요.
+                        An error occurred in the application. Please try again later.
                         <br />
                         <span className="text-xs text-red-400 mt-2 block">{this.state.error?.message}</span>
                     </p>

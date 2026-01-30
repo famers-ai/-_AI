@@ -7,11 +7,14 @@ import clsx from "clsx";
 import TermsAgreementModal from "@/components/TermsAgreementModal";
 import DataInputModal from "@/components/DataInputModal";
 import { getFarmCondition, getVPDSignal } from "@/lib/farm-signals";
+import CropSelector from "@/components/CropSelector";
+import { DEFAULT_CROP } from "@/lib/crops";
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState("San Francisco");
+  const [selectedCropId, setSelectedCropId] = useState(DEFAULT_CROP);
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [tempCity, setTempCity] = useState(city);
 
@@ -156,15 +159,16 @@ export default function Dashboard() {
     );
   }
 
-  // 농사 컨디션 계산
+  // Farm condition calculation
   const farmCondition = getFarmCondition(
     data.indoor.vpd,
     data.indoor.temperature,
     data.indoor.humidity,
-    data.weather.rain
+    data.weather.rain,
+    selectedCropId
   );
 
-  const vpdSignal = getVPDSignal(data.indoor.vpd);
+  const vpdSignal = getVPDSignal(data.indoor.vpd, selectedCropId);
 
   return (
     <div className="space-y-6">
@@ -178,6 +182,11 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2">
+          <CropSelector
+            selectedCropId={selectedCropId}
+            onCropChange={setSelectedCropId}
+          />
+
           {isEditingLocation ? (
             <form onSubmit={handleCitySubmit} className="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
               <Search size={14} className="text-slate-400" />
@@ -225,10 +234,10 @@ export default function Dashboard() {
               {farmCondition.message}
             </h3>
             <p className="text-sm text-slate-600 mt-1">
-              실내 VPD: {vpdSignal.emoji} {
+              Indoor VPD: {vpdSignal.emoji} {
                 data.indoor.vpd !== null && data.indoor.vpd !== undefined && !isNaN(data.indoor.vpd)
                   ? `${data.indoor.vpd.toFixed(2)} kPa`
-                  : '측정 중'
+                  : 'Measuring...'
               } - {vpdSignal.message}
             </p>
           </div>

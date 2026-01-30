@@ -221,7 +221,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 🚜 오늘의 농사 컨디션 배너 */}
+      {/* Today's Farm Condition Banner */}
       <div className={clsx(
         "p-4 md:p-6 rounded-2xl border-2 shadow-sm transition-all",
         farmCondition.bgColor,

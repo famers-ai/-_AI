@@ -246,20 +246,24 @@ export default function WeeklyReportPage() {
                     AI Insights & Recommendations
                 </h2>
                 <div className="space-y-3">
-                    {insights.map((insight: any, index: number) => (
-                        <div key={index} className="flex items-start bg-white/50 p-2 rounded">
-                            <span className="text-xl mr-3">
-                                {insight.type === 'warning' ? '⚠️' :
-                                    insight.type === 'alert' ? '🚨' :
-                                        insight.type === 'success' ? '✅' : '💡'}
-                            </span>
-                            <div>
-                                <p className="font-medium text-gray-800">{insight.title}</p>
-                                <p className="text-sm text-gray-600">{insight.message}</p>
-                                <p className="text-xs text-slate-500 mt-1 italic">Recommendation: {insight.recommendation}</p>
+                    {Array.isArray(insights) && insights.length > 0 ? (
+                        insights.map((insight: any, index: number) => (
+                            <div key={index} className="flex items-start bg-white/50 p-2 rounded">
+                                <span className="text-xl mr-3">
+                                    {insight.type === 'warning' ? '⚠️' :
+                                        insight.type === 'alert' ? '🚨' :
+                                            insight.type === 'success' ? '✅' : '💡'}
+                                </span>
+                                <div>
+                                    <p className="font-medium text-gray-800">{insight.title}</p>
+                                    <p className="text-sm text-gray-600">{insight.message}</p>
+                                    <p className="text-xs text-slate-500 mt-1 italic">Recommendation: {insight.recommendation}</p>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))
+                    ) : (
+                        <div className="text-center text-gray-500 italic p-4">No insights available for this period.</div>
+                    )}
                 </div>
             </div>
 

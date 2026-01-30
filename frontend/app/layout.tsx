@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   description: "Future Farming Solutions powered by Gemini",
 };
 
+import ErrorBoundary from "@/components/ErrorBoundary";
+
+// ... (existing imports)
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -25,7 +29,9 @@ export default function RootLayout({
           <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative">
             <div className="max-w-7xl mx-auto">
               <Header />
-              {children}
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
             </div>
           </main>
         </div>

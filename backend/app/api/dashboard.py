@@ -15,6 +15,7 @@ async def get_dashboard_data(
     city: str = None,
     lat: float = None,
     lon: float = None,
+    country: str = None,  # ISO country code (e.g., 'US', 'GB', 'KR')
     crop_type: str = "Strawberries",
     user_id: str = "test_user_001"
 ):
@@ -24,17 +25,14 @@ async def get_dashboard_data(
         # 1. Determine Location (Coordinates vs City Name)
         if lat is not None and lon is not None:
              # Direct coordinates provided (e.g. from "Use My Location")
-             # We might want to reverse geocode to get a name, but data handling is primary
-             # Simple reverse geocode for name if city is missing
              if not city:
                  location_name = f"{lat:.2f}, {lon:.2f}"
-                 # Ideally call a reverse geocode service here, or just let frontend handle the name
         else:
             # Fallback to city search
             if not city:
-                city = "San Francisco" # Default
+                city = "San Francisco"
                 
-            lat, lon, found_name = get_coordinates_from_city(city)
+            lat, lon, found_name = get_coordinates_from_city(city, country)
             if found_name:
                 location_name = found_name
             

@@ -28,11 +28,15 @@ def fetch_weather_data(lat=37.7749, lon=-122.4194):
         # STRICT REAL DATA POLICY: Return None on failure, do not fake data
         return None
 
-@lru_cache(maxsize=128)
-def get_coordinates_from_city(city_name):
+@lru_cache(maxsize=256)
+def get_coordinates_from_city(city_name, preferred_country=None):
     """
-    Enhanced geocoding with smart prioritization
-    Selects best match based on population and relevance (removing US bias)
+    Enhanced geocoding with country preference support
+    Prioritizes results from preferred_country if provided
+    
+    Args:
+        city_name: City name to search for
+        preferred_country: ISO country code (e.g., 'US', 'GB', 'KR') to prioritize
     """
     try:
         url = "https://geocoding-api.open-meteo.com/v1/search"
@@ -50,11 +54,25 @@ def get_coordinates_from_city(city_name):
         
         results = data["results"]
         
-        # Sort by population (descending) to get the most major city
-        # This fixes the "Tokyo Hill, Texas" vs "Tokyo, Japan" issue
-        sorted_results = sorted(results, key=lambda x: x.get("population", 0) or 0, reverse=True)
-        
-        best_match = sorted_results[0]
+        # Strategy 1: Country-aware prioritization
+        if preferred_country:
+            # First, try to find matches in the preferred country
+            country_matches = [r for r in results if r.get("country_code") == preferred_country]
+            
+            if country_matches:
+                # Sort by population within preferred country
+                sorted_matches = sorted(country_matches, key=lambda x: x.get("population", 0) or 0, reverse=True)
+                best_match = sorted_matches[0]
+                print(f"🎯 Prioritized {preferred_country}: '{city_name}' -> {best_match.get('name')}, {best_match.get('country')}")
+            else:
+                # No match in preferred country, fall back to global search
+                sorted_results = sorted(results, key=lambda x: x.get("population", 0) or 0, reverse=True)
+                best_match = sorted_results[0]
+                print(f"🌍 Global match (no {preferred_country} result): '{city_name}' -> {best_match.get('name')}, {best_match.get('country')}")
+        else:
+            # No country preference, use population-based ranking
+            sorted_results = sorted(results, key=lambda x: x.get("population", 0) or 0, reverse=True)
+            best_match = sorted_results[0]
         
         lat = best_match.get("latitude")
         lon = best_match.get("longitude")
@@ -71,7 +89,7 @@ def get_coordinates_from_city(city_name):
         elif country:
             location_name += f", {country}"
             
-        print(f"📍 Geocoded '{city_name}' -> {location_name} ({lat}, {lon}) (Pop: {best_match.get('population', 'N/A')})")
+        print(f"📍 Final: '{city_name}' -> {location_name} ({lat}, {lon}) (Pop: {best_match.get('population', 'N/A')})")
         
         return lat, lon, location_name
         

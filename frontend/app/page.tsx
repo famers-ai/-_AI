@@ -6,9 +6,17 @@ import { Loader2, RefreshCw, MapPin, Search, PlusCircle, LocateFixed } from "luc
 import clsx from "clsx";
 import TermsAgreementModal from "@/components/TermsAgreementModal";
 import DataInputModal from "@/components/DataInputModal";
+import LocationSetupModal from "@/components/LocationSetupModal";
 import { getFarmCondition, getVPDSignal } from "@/lib/farm-signals";
 import CropSelector from "@/components/CropSelector";
 import { DEFAULT_CROP } from "@/lib/crops";
+import {
+  detectUserCountry,
+  saveLocation,
+  loadSavedLocation,
+  isFirstVisit,
+  type SavedLocation
+} from "@/lib/location";
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -18,6 +26,10 @@ export default function Dashboard() {
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [tempCity, setTempCity] = useState(city);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [userCountry, setUserCountry] = useState<string | null>(null);
+
+  // Location Setup Modal (for first-time visitors)
+  const [showLocationSetup, setShowLocationSetup] = useState(false);
 
   // User & Terms State
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -31,13 +43,42 @@ export default function Dashboard() {
   const [analyzing, setAnalyzing] = useState(false);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
 
+  // Strategy 1: Detect user's country on mount
+  useEffect(() => {
+    const country = detectUserCountry();
+    setUserCountry(country);
+    console.log(`🌍 Detected user country: ${country || 'Unknown'}`);
+  }, []);
+
+  // Strategy 2: Check for saved location or show setup modal on first visit
+  useEffect(() => {
+    const savedLoc = loadSavedLocation();
+
+    if (savedLoc) {
+      // Load from saved location
+      console.log('📍 Using saved location:', savedLoc.name);
+      if (savedLoc.lat && savedLoc.lon) {
+        loadData(undefined, savedLoc.lat, savedLoc.lon);
+      } else if (savedLoc.city) {
+        setCity(savedLoc.city);
+        setTempCity(savedLoc.city);
+      }
+    } else if (isFirstVisit()) {
+      // First visit: show location setup modal
+      setShowLocationSetup(true);
+    } else {
+      // Regular visit without saved location
+      loadData();
+    }
+  }, []);
+
   async function loadData(cityName?: string, lat?: number, lon?: number) {
     setLoading(true);
     try {
-      // Use provided city or current state city. If lat/lon provided, city is ignored by backend logic usually
       const targetCity = cityName || city;
 
-      let dashboardData = await fetchDashboardData(targetCity, lat, lon);
+      // Strategy 1: Pass detected country to API for better geocoding
+      let dashboardData = await fetchDashboardData(targetCity, lat, lon, userCountry || undefined);
 
       // Fetch user profile to check terms agreement
       try {
@@ -65,12 +106,25 @@ export default function Dashboard() {
         console.warn("Failed to fetch user profile", err);
       }
 
-      // Update city state if backend returns a resolved name and we used coordinates
+      // Strategy 2: Save location automatically if coordinates were used
       if (lat && lon && dashboardData.location.name) {
-        // Keep the city state in sync with what's displayed for future refreshes
-        // but don't trigger a re-fetch loop
+        const locationToSave: SavedLocation = {
+          lat,
+          lon,
+          name: dashboardData.location.name,
+          timestamp: Date.now()
+        };
+        saveLocation(locationToSave);
         setCity(dashboardData.location.name);
         setTempCity(dashboardData.location.name);
+      } else if (cityName && dashboardData.location.name) {
+        // Save city-based location
+        const locationToSave: SavedLocation = {
+          city: cityName,
+          name: dashboardData.location.name,
+          timestamp: Date.now()
+        };
+        saveLocation(locationToSave);
       }
 
       setData(dashboardData);
@@ -84,11 +138,11 @@ export default function Dashboard() {
 
   function handleCitySubmit(e: React.FormEvent) {
     e.preventDefault();
-    setCity(tempCity); // This triggers useEffect
+    setCity(tempCity);
     setIsEditingLocation(false);
   }
 
-  // Handle "Use My Location"
+  // Handle "Use My Location" button
   function handleUseCurrentLocation() {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser");
@@ -100,7 +154,6 @@ export default function Dashboard() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        // Load data with coordinates
         loadData(undefined, latitude, longitude);
         setIsGettingLocation(false);
         setIsEditingLocation(false);
@@ -118,11 +171,28 @@ export default function Dashboard() {
     );
   }
 
+  // Handle location setup modal
+  const handleLocationSetup = (city?: string, lat?: number, lon?: number) => {
+    setShowLocationSetup(false);
+    if (lat && lon) {
+      loadData(undefined, lat, lon);
+    } else if (city) {
+      setCity(city);
+      setTempCity(city);
+      loadData(city);
+    }
+  };
+
+  const handleSkipLocationSetup = () => {
+    setShowLocationSetup(false);
+    loadData(); // Load with default
+  };
+
   // Effect to reload when city changes
   useEffect(() => {
-    // Only load if not already loading from coordinate update to prevent double fetch
-    // Actually simplicity is better: just load.
-    loadData();
+    if (city !== "San Francisco" || !loading) {
+      loadData();
+    }
   }, [city]);
 
   // LEGAL GUARD: Check terms before any sensitive action
@@ -163,7 +233,6 @@ export default function Dashboard() {
   };
 
   const handleDataSubmit = (sensorData: any) => {
-    // Refresh dashboard data after input
     loadData();
   };
 
@@ -312,13 +381,11 @@ export default function Dashboard() {
                   <div className="font-semibold text-lg">{data.indoor.humidity ?? "--"}%</div>
                 </div>
               </div>
-              {/* Visual bar only shows if risky and data exists */}
               {data.indoor.vpd && data.indoor.vpd_status?.includes("Risk") &&
                 <div className="mt-4 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                   <div className="bg-yellow-400 h-full w-[80%]"></div>
                 </div>
               }
-              {/* Data Record Prompt if empty */}
               {!data.indoor.temperature && (
                 <div className="mt-4 text-xs text-center text-slate-400 bg-slate-50 py-2 rounded-lg border border-dashed border-slate-200">
                   No data recorded today
@@ -414,6 +481,14 @@ export default function Dashboard() {
       </button>
 
       {/* Modals */}
+      {showLocationSetup && (
+        <LocationSetupModal
+          isOpen={showLocationSetup}
+          onLocationSet={handleLocationSetup}
+          onSkip={handleSkipLocationSetup}
+        />
+      )}
+
       {showDataInput && (
         <DataInputModal
           onClose={() => setShowDataInput(false)}

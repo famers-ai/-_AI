@@ -21,7 +21,12 @@ export interface DashboardData {
     crop: string;
 }
 
-export async function fetchDashboardData(city: string = "San Francisco", lat?: number, lon?: number): Promise<DashboardData> {
+export async function fetchDashboardData(
+    city: string = "San Francisco",
+    lat?: number,
+    lon?: number,
+    country?: string
+): Promise<DashboardData> {
     let url = `${API_BASE_url}/dashboard?crop_type=Strawberries`;
 
     if (lat && lon) {
@@ -29,6 +34,7 @@ export async function fetchDashboardData(city: string = "San Francisco", lat?: n
         if (city) url += `&city=${encodeURIComponent(city)}`;
     } else {
         url += `&city=${encodeURIComponent(city)}`;
+        if (country) url += `&country=${country}`;
     }
 
     const res = await fetch(url, {

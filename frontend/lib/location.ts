@@ -65,6 +65,7 @@ export interface SavedLocation {
     lat?: number;
     lon?: number;
     name: string;
+    country?: string; // Added to persist country context
     timestamp: number;
 }
 

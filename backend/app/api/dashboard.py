@@ -22,6 +22,8 @@ async def get_dashboard_data(
     try:
         location_name = city or "Unknown Location"
         
+        found_country_code = None
+
         # 1. Determine Location (Coordinates vs City Name)
         if lat is not None and lon is not None:
              # Direct coordinates provided (e.g. from "Use My Location")
@@ -32,7 +34,7 @@ async def get_dashboard_data(
             if not city:
                 city = "San Francisco"
                 
-            lat, lon, found_name = get_coordinates_from_city(city, country)
+            lat, lon, found_name, found_country_code = get_coordinates_from_city(city, country)
             if found_name:
                 location_name = found_name
             
@@ -113,7 +115,8 @@ async def get_dashboard_data(
             "location": {
                 "name": location_name,
                 "lat": lat,
-                "lon": lon
+                "lon": lon,
+                "country": found_country_code
             },
             "weather": weather, # Outside weather is always real
             "indoor": indoor_data,

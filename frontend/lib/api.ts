@@ -5,6 +5,7 @@ export interface DashboardData {
         name: string;
         lat: number;
         lon: number;
+        country?: string;
     };
     weather: {
         temperature: number;

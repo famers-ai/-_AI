@@ -42,7 +42,7 @@ def get_coordinates_from_city(city_name, preferred_country=None):
         url = "https://geocoding-api.open-meteo.com/v1/search"
         params = {
             "name": city_name,
-            "count": 10,
+            "count": 100, # Increased from 10 to ensure major cities are found
             "language": "en",
             "format": "json"
         }
@@ -53,26 +53,41 @@ def get_coordinates_from_city(city_name, preferred_country=None):
             return None, None, None
         
         results = data["results"]
+        best_match = None
+
+        # Helper to get population safely
+        def get_pop(item):
+            return item.get("population") or 0
         
         # Strategy 1: Country-aware prioritization
         if preferred_country:
-            # First, try to find matches in the preferred country
+            # Try strict country match first
             country_matches = [r for r in results if r.get("country_code") == preferred_country]
             
             if country_matches:
-                # Sort by population within preferred country
-                sorted_matches = sorted(country_matches, key=lambda x: x.get("population", 0) or 0, reverse=True)
-                best_match = sorted_matches[0]
+                # Determine "Major City" threshold to avoid tiny villages in preferred country
+                # overriding major global cities if the name is ambiguous?
+                # Actually, if user sets country, they likely mean that country.
+                # Sort by population desc
+                country_matches.sort(key=get_pop, reverse=True)
+                best_match = country_matches[0]
                 print(f"🎯 Prioritized {preferred_country}: '{city_name}' -> {best_match.get('name')}, {best_match.get('country')}")
             else:
-                # No match in preferred country, fall back to global search
-                sorted_results = sorted(results, key=lambda x: x.get("population", 0) or 0, reverse=True)
-                best_match = sorted_results[0]
-                print(f"🌍 Global match (no {preferred_country} result): '{city_name}' -> {best_match.get('name')}, {best_match.get('country')}")
-        else:
-            # No country preference, use population-based ranking
-            sorted_results = sorted(results, key=lambda x: x.get("population", 0) or 0, reverse=True)
-            best_match = sorted_results[0]
+                print(f"⚠️ Preferred country {preferred_country} not found for '{city_name}', falling back global.")
+
+        # Strategy 2: Global Population Fallback
+        # If no country match yet, use global sorting.
+        if not best_match:
+            # Sort global results by population
+            results.sort(key=get_pop, reverse=True)
+            best_match = results[0]
+            
+            # EDGE CASE: "Newyork" (UK) vs "New York" (US)
+            # If the user input is "Newyork" (no space), Open-Meteo might prioritize exact string match 
+            # over population in its default sorting (before our re-sort).
+            # By fetching 100 results and re-sorting by population here, we ensure 
+            # New York, US (8M+) beats Newyork, UK (low pop).
+            print(f"🌍 Global match: '{city_name}' -> {best_match.get('name')}, {best_match.get('country')} (Pop: {get_pop(best_match)})")
         
         lat = best_match.get("latitude")
         lon = best_match.get("longitude")
@@ -89,13 +104,13 @@ def get_coordinates_from_city(city_name, preferred_country=None):
         elif country:
             location_name += f", {country}"
             
-        print(f"📍 Final: '{city_name}' -> {location_name} ({lat}, {lon}) (Pop: {best_match.get('population', 'N/A')})")
+        print(f"📍 Final: '{city_name}' -> {location_name} ({lat}, {lon})")
         
-        return lat, lon, location_name
+        return lat, lon, location_name, country_code
         
     except Exception as e:
         print(f"Geocoding error for '{city_name}': {e}")
-        return None, None, None
+        return None, None, None, None
 
 def calculate_vpd(temp_f, humidity):
     temp_c = (temp_f - 32) * 5.0/9.0

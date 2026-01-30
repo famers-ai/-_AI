@@ -64,7 +64,7 @@ export default function Dashboard() {
         } else if (savedLoc.city) {
           setCity(savedLoc.city);
           setTempCity(savedLoc.city);
-          loadData(savedLoc.city);
+          loadData(savedLoc.city, undefined, undefined, savedLoc.country);
         }
       } else if (isFirstVisit()) {
         // First visit: show location setup modal
@@ -80,14 +80,15 @@ export default function Dashboard() {
     }
   }, []);
 
-  async function loadData(cityName?: string, lat?: number, lon?: number) {
+  async function loadData(cityName?: string, lat?: number, lon?: number, countryCode?: string) {
     setLoading(true);
     setLocationError(null);
     try {
       const targetCity = cityName || city;
 
-      // Strategy 1: Pass detected country to API for better geocoding
-      let dashboardData = await fetchDashboardData(targetCity, lat, lon, userCountry || undefined);
+      // Strategy 1: Pass detected country (or saved country) to API for better geocoding
+      const targetCountry = countryCode || userCountry || undefined;
+      let dashboardData = await fetchDashboardData(targetCity, lat, lon, targetCountry);
 
       // Check for backend error or empty data
       if (!dashboardData || !dashboardData.location || !dashboardData.location.name) {
@@ -126,6 +127,7 @@ export default function Dashboard() {
           lat,
           lon,
           name: dashboardData.location.name,
+          country: dashboardData.location.country,
           timestamp: Date.now()
         };
         saveLocation(locationToSave);
@@ -139,6 +141,7 @@ export default function Dashboard() {
         const locationToSave: SavedLocation = {
           city: cityName,
           name: dashboardData.location.name,
+          country: dashboardData.location.country,
           timestamp: Date.now()
         };
         saveLocation(locationToSave);

@@ -12,16 +12,18 @@ interface LocationSetupModalProps {
 export default function LocationSetupModal({ isOpen, onLocationSet, onSkip }: LocationSetupModalProps) {
     const [isGettingLocation, setIsGettingLocation] = useState(false);
     const [manualCity, setManualCity] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
     if (!isOpen) return null;
 
     const handleUseGPS = () => {
         if (!navigator.geolocation) {
-            alert("Geolocation is not supported by your browser");
+            setError("Geolocation is not supported by your browser");
             return;
         }
 
         setIsGettingLocation(true);
+        setError(null);
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -29,14 +31,14 @@ export default function LocationSetupModal({ isOpen, onLocationSet, onSkip }: Lo
                 onLocationSet(undefined, latitude, longitude);
                 setIsGettingLocation(false);
             },
-            (error) => {
-                console.error("Geolocation error:", error);
+            (err) => {
+                console.error("Geolocation error:", err);
                 setIsGettingLocation(false);
                 let msg = "Unable to retrieve your location";
-                if (error.code === 1) msg = "Location permission denied. Please enable location access in your browser settings.";
-                else if (error.code === 2) msg = "Location unavailable";
-                else if (error.code === 3) msg = "Location request timed out";
-                alert(msg);
+                if (err.code === 1) msg = "Access denied. Please enable location permissions.";
+                else if (err.code === 2) msg = "Location unavailable";
+                else if (err.code === 3) msg = "Location request timed out";
+                setError(msg);
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
@@ -92,6 +94,13 @@ export default function LocationSetupModal({ isOpen, onLocationSet, onSkip }: Lo
                     )}
                 </button>
 
+                {/* Error Message */}
+                {error && (
+                    <div className="mb-4 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-200 text-center">
+                        {error}
+                    </div>
+                )}
+
                 {/* Divider */}
                 <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">
@@ -112,6 +121,7 @@ export default function LocationSetupModal({ isOpen, onLocationSet, onSkip }: Lo
                             type="text"
                             value={manualCity}
                             onChange={(e) => setManualCity(e.target.value)}
+                            onFocus={(e) => e.target.select()}
                             placeholder="e.g., New York, Tokyo, Seoul"
                             className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                         />

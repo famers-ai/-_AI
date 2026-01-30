@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [tempCity, setTempCity] = useState(city);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [userCountry, setUserCountry] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Location Setup Modal (for first-time visitors)
   const [showLocationSetup, setShowLocationSetup] = useState(false);
@@ -81,11 +82,17 @@ export default function Dashboard() {
 
   async function loadData(cityName?: string, lat?: number, lon?: number) {
     setLoading(true);
+    setLocationError(null);
     try {
       const targetCity = cityName || city;
 
       // Strategy 1: Pass detected country to API for better geocoding
       let dashboardData = await fetchDashboardData(targetCity, lat, lon, userCountry || undefined);
+
+      // Check for backend error or empty data
+      if (!dashboardData || !dashboardData.location || !dashboardData.location.name) {
+        throw new Error("Invalid location data received from server");
+      }
 
       // Fetch user profile to check terms agreement
       try {
@@ -135,12 +142,19 @@ export default function Dashboard() {
           timestamp: Date.now()
         };
         saveLocation(locationToSave);
+        // Update displayed city name if successful
+        setCity(dashboardData.location.name);
+        setTempCity(dashboardData.location.name);
       }
 
       setData(dashboardData);
-    } catch (e) {
+      setLocationError(null);
+    } catch (e: any) {
       console.error(e);
-      setData(null);
+      // setData(null); // Keep previous data if possible? Or clear it? 
+      // Let's keep data if available, but show error. 
+      // If it's a "not found" error, maybe we should clear.
+      setLocationError(cityName ? `Could not find "${cityName}". Try another city.` : 'Failed to load data.');
     } finally {
       setLoading(false);
     }
@@ -157,11 +171,12 @@ export default function Dashboard() {
   // Handle "Use My Location" button
   function handleUseCurrentLocation() {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      setLocationError("Geolocation is not supported by your browser");
       return;
     }
 
     setIsGettingLocation(true);
+    setLocationError(null);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -177,7 +192,7 @@ export default function Dashboard() {
         if (error.code === 1) msg = "Location permission denied";
         else if (error.code === 2) msg = "Location unavailable";
         else if (error.code === 3) msg = "Location request timed out";
-        alert(msg);
+        setLocationError(msg);
       },
       { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
@@ -308,6 +323,7 @@ export default function Dashboard() {
                 type="text"
                 value={tempCity}
                 onChange={(e) => setTempCity(e.target.value)}
+                onFocus={(e) => e.target.select()}
                 className="text-sm outline-none text-slate-700 w-32"
                 placeholder="Enter City..."
                 autoFocus
@@ -322,8 +338,9 @@ export default function Dashboard() {
           ) : (
             <button
               onClick={() => {
-                setTempCity(city);
+                setTempCity('');
                 setIsEditingLocation(true);
+                setLocationError(null);
               }}
               className="flex items-center gap-1.5 text-sm bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm hover:border-emerald-200 hover:text-emerald-700 transition-all group"
             >
@@ -332,10 +349,20 @@ export default function Dashboard() {
             </button>
           )}
 
-          <button onClick={() => loadData()} className="text-sm text-slate-400 hover:text-emerald-600 font-medium flex items-center gap-1 px-2">
-            <RefreshCw size={14} />
+          <button
+            onClick={handleUseCurrentLocation}
+            className="text-sm text-slate-400 hover:text-emerald-600 font-medium flex items-center gap-1 px-2"
+            title="Use My Location"
+            disabled={isGettingLocation}
+          >
+            {isGettingLocation ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
           </button>
         </div>
+        {locationError && (
+          <div className="mt-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-200">
+            {locationError}
+          </div>
+        )}
       </div>
 
       {/* Today's Farm Condition Banner */}

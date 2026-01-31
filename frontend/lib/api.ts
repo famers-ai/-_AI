@@ -155,6 +155,7 @@ export async function fetchPestForecast(crop: string, lat: number, lon: number) 
 
 export async function fetchMarketPrices(crop: string) {
     const res = await fetch(`${API_BASE_url}/market/prices?crop_type=${crop}`, {
+        headers: getAuthHeaders(),
         cache: "no-store",
         next: { revalidate: 0 }
     });
@@ -164,6 +165,7 @@ export async function fetchMarketPrices(crop: string) {
 
 export async function fetchUserProfile() {
     const res = await fetch(`${API_BASE_url}/users/me`, {
+        headers: getAuthHeaders(),
         cache: "no-store"
     });
     if (res.status === 404) return null; // Benign case: User not logged in
@@ -206,6 +208,7 @@ export async function fetchWeeklyReport() {
 // Voice Logs API
 export async function fetchVoiceLogs() {
     const res = await fetch(`${API_BASE_url}/voice-logs`, {
+        headers: getAuthHeaders(),
         cache: "no-store",
         next: { revalidate: 0 }
     });
@@ -216,7 +219,7 @@ export async function fetchVoiceLogs() {
 export async function createVoiceLog(logData: any) {
     const res = await fetch(`${API_BASE_url}/voice-logs`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(logData),
         cache: "no-store"
     });
@@ -227,6 +230,7 @@ export async function createVoiceLog(logData: any) {
 export async function deleteVoiceLog(id: number) {
     const res = await fetch(`${API_BASE_url}/voice-logs/${id}`, {
         method: "DELETE",
+        headers: getAuthHeaders(),
         cache: "no-store"
     });
     if (!res.ok) throw new Error("Failed to delete voice log");

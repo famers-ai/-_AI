@@ -3,7 +3,7 @@ Sensor Data API for Smart Farm AI
 Handles real user sensor data collection and retrieval
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime, timedelta
@@ -37,11 +37,17 @@ class SensorReadingResponse(BaseModel):
     vpd: float
     reading_id: int
 
-# TODO: Implement proper authentication
-# For now, using a simple user_id parameter
-def get_current_user_id(user_id: str = "test_user_001"):
-    """Get current user ID (placeholder for auth)"""
-    return user_id
+# Authentication via Header
+def get_current_user_id(
+    x_farm_id: str = Header(..., alias="X-Farm-ID")
+):
+    """
+    Get current user ID from X-Farm-ID header.
+    This ensures all data is isolated per farm.
+    """
+    if not x_farm_id:
+        raise HTTPException(status_code=400, detail="Missing X-Farm-ID header")
+    return x_farm_id
 
 @router.post("/record", response_model=SensorReadingResponse)
 async def record_sensor_data(

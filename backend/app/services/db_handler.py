@@ -7,29 +7,7 @@ from datetime import datetime
 # Structure: backend/app/services/db_handler.py
 from app.core.config import DB_NAME
 
-def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS sensor_logs
-                 (timestamp TEXT, crop_type TEXT, temperature REAL, humidity REAL, soil_moisture REAL)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS training_data
-                 (timestamp TEXT, image_id TEXT, label TEXT, correction TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS safety_logs
-                 (timestamp TEXT, crop_type TEXT, message TEXT, severity TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS user_prefs
-                 (key TEXT PRIMARY KEY, value TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS voice_logs
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  user_id TEXT,
-                  text TEXT,
-                  category TEXT,
-                  parsed_crop TEXT,
-                  parsed_quantity REAL,
-                  parsed_unit TEXT,
-                  parsed_action TEXT,
-                  timestamp TEXT)''')
-    conn.commit()
-    conn.close()
+# init_db removed - handled by app.core.db_init
 
 def set_user_pref(key, value):
     conn = sqlite3.connect(DB_NAME)
@@ -49,21 +27,22 @@ def get_user_pref(key, default=None):
     except:
         return default
 
-def log_sensor_data(crop_type, weather, sensor):
+def log_sensor_data(user_id, crop_type, weather, sensor):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    c.execute("INSERT INTO sensor_logs VALUES (?, ?, ?, ?, ?)",
-              (timestamp, crop_type, weather['temperature'], weather['humidity'], sensor['soil_moisture']))
+    # Using unified sensor_readings table
+    c.execute("""
+        INSERT INTO sensor_readings (user_id, temperature, humidity, soil_moisture, data_source)
+        VALUES (?, ?, ?, ?, 'manual')
+    """, (user_id, weather['temperature'], weather['humidity'], sensor['soil_moisture']))
     conn.commit()
     conn.close()
 
-def log_safety_event(crop_type, message, severity="Critical"):
+def log_safety_event(user_id, crop_type, message, severity="Critical"):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    c.execute("INSERT INTO safety_logs VALUES (?, ?, ?, ?)",
-              (timestamp, crop_type, message, severity))
+    c.execute("INSERT INTO safety_logs (user_id, crop_type, message, severity) VALUES (?, ?, ?, ?)",
+              (user_id, crop_type, message, severity))
     conn.commit()
     conn.close()
 
@@ -83,10 +62,11 @@ def get_safety_logs(limit=10):
     conn.close()
     return df
 
-def get_weekly_stats(crop_type):
+def get_weekly_stats(user_id, crop_type):
     conn = sqlite3.connect(DB_NAME)
-    query = "SELECT AVG(temperature) as avg_temp, AVG(soil_moisture) as avg_moisture, COUNT(*) as count FROM sensor_logs WHERE crop_type = ?"
-    df = pd.read_sql_query(query, conn, params=(crop_type,))
+    # Use sensor_readings table
+    query = "SELECT AVG(temperature) as avg_temp, AVG(soil_moisture) as avg_moisture, COUNT(*) as count FROM sensor_readings WHERE user_id = ?"
+    df = pd.read_sql_query(query, conn, params=(user_id,))
     conn.close()
     
     if df.empty or df.iloc[0]['count'] == 0:

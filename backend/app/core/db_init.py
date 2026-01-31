@@ -174,6 +174,19 @@ def init_real_data_schema():
             )
         ''')
         
+        # 10. Safety Logs (for AI Engine)
+        cursor.execute('''
+             CREATE TABLE IF NOT EXISTS safety_logs (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 user_id TEXT NOT NULL,
+                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                 crop_type TEXT,
+                 message TEXT, 
+                 severity TEXT,
+                 FOREIGN KEY (user_id) REFERENCES users(id)
+             )
+        ''')
+        
         # Indexes
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_sensor_user_time ON sensor_readings(user_id, timestamp DESC)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_pest_user_time ON pest_incidents(user_id, timestamp DESC)')

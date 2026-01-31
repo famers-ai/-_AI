@@ -142,7 +142,7 @@ async def get_dashboard_data(
         # Check for optional feedback handling (not in main GET, but structure ready)
         # Default AI run usually has no feedback unless explicitly requested via separate call.
         
-        ai_result = analyze_situation(weather, crop_type or "tomato") # Default crop
+        ai_result = analyze_situation(weather, crop_type or "tomato", user_id=user_id)
         
         # Check if result is dict (New Format) or str (Old/Error)
         if isinstance(ai_result, dict):
@@ -212,13 +212,14 @@ def ai_analyze(
     humidity: float, 
     rain: float, 
     wind: float,
-    user_feedback: str = None
+    user_feedback: str = None,
+    x_farm_id: str = Header(..., alias="X-Farm-ID")
 ):
     # Reconstruct weather dict for the AI Engine
     weather = {"temperature": temp, "humidity": humidity, "rain": rain, "wind_speed": wind}
     try:
         # Now pass feedback to the engine
-        insight = analyze_situation(weather, crop_type, user_feedback=user_feedback)
+        insight = analyze_situation(weather, crop_type, user_feedback=user_feedback, user_id=x_farm_id)
         return {"insight": insight}
     except Exception as e:
         import traceback
@@ -277,14 +278,17 @@ def control_farm(data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/reports/weekly")
-def get_weekly_report(crop_type: str = "tomato"):
+def get_weekly_report(
+    crop_type: str = "tomato",
+    x_farm_id: str = Header(..., alias="X-Farm-ID")
+):
     """
     Generates a PDF-like Weekly AI Report.
     """
     try:
         # Import here to avoid circular dependencies if simple
         from app.services.ai_engine import generate_weekly_report
-        report_text = generate_weekly_report(crop_type)
+        report_text = generate_weekly_report(crop_type, user_id=x_farm_id)
         return {"report_text": report_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

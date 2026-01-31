@@ -11,3 +11,10 @@ services:
         sync: false
       - key: OPENWEATHER_API_KEY
         sync: false
+      - key: DB_PATH
+        value: /var/data
+
+    disk:
+      name: smartfarm-data
+      mountPath: /var/data
+      sizeGB: 1

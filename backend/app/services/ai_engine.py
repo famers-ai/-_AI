@@ -4,7 +4,6 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from functools import lru_cache
 from .db_handler import log_safety_event, get_weekly_stats
-from .db_handler import log_safety_event, get_weekly_stats
 from .physics_engine import physics_engine
 from .safety_filter import safety_filter
 # from .claude_service import get_claude_response (Reverted to Gemini)
@@ -92,10 +91,10 @@ def load_knowledge_base():
         print(f"Error loading KB: {e}")
         return {}
 
-def analyze_situation(weather, crop_type, user_feedback=None):
+def analyze_situation(weather, crop_type, user_feedback=None, user_id=None):
     """
     Analyzes current conditions using the 10-Step Hybrid Safety Filter.
-    Supports User Feedback Loop.
+    Supports User Feedback Loop and User Isolation.
     """
     
     # Define the core AI generation logic as a callback function
@@ -143,7 +142,11 @@ def analyze_situation(weather, crop_type, user_feedback=None):
     # Post-Process: Calculate Confidence & Trigger Questions
     classification = "Normal"
     if "Warning" in response_text: classification = "Warning"
-    if "Critical" in response_text: classification = "Critical"
+    if "Critical" in response_text: 
+        classification = "Critical"
+        if user_id:
+            # Log critical safety events to DB
+            log_safety_event(user_id, crop_type, "Critical condition detected by AI", "Critical")
     
     # Confidence Logic matches Hybrid Design
     confidence_score = 0.95 
@@ -174,8 +177,11 @@ def analyze_situation(weather, crop_type, user_feedback=None):
         "validation_question": question
     }
 
-def generate_weekly_report(crop_type):
-    stats = get_weekly_stats(crop_type)
+def generate_weekly_report(crop_type, user_id):
+    if not user_id:
+        return "Error: User Identification Required for Report."
+        
+    stats = get_weekly_stats(user_id, crop_type)
     if not stats:
         return "Insufficient data to generate weekly report."
         

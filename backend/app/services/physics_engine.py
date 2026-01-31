@@ -16,6 +16,34 @@ class GreenhousePhysicsModel:
             "ventilation_score": 0.7 # 0.0 (Closed) to 1.0 (Fully Open)
         }
 
+    def calibrate_model(self, actual_internal_temp, external_weather):
+        """
+        Self-Improvement: Adjust insulation score based on Ground Truth.
+        If actual temp > estimated, we might have better insulation (or greenhouse effect) than thought.
+        """
+        # 1. Run current estimation
+        est = self.estimate_microclimate(external_weather)
+        est_temp = est['temperature']
+        
+        error = actual_internal_temp - est_temp
+        
+        # 2. Adjust Insulation Score (Simple Heuristic Learning)
+        # If Error > 0 (Actual is hotter), increase insulation/heat retention.
+        # If Error < 0 (Actual is cooler), decrease it.
+        
+        correction_factor = 0.05 # slow learning rate
+        
+        if error > 2.0: # Significant underestimation
+             self.params['insulation_score'] = min(0.9, self.params['insulation_score'] + correction_factor)
+        elif error < -2.0: # Significant overestimation
+             self.params['insulation_score'] = max(0.1, self.params['insulation_score'] - correction_factor)
+             
+        return {
+            "previous_error": round(error, 2),
+            "new_insulation_score": round(self.params['insulation_score'], 3),
+            "status": "Calibrated"
+        }
+
     def estimate_microclimate(self, external_weather):
         """
         Estimates internal temperature and humidity based on external conditions.

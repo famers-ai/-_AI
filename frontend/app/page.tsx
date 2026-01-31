@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchDashboardData, fetchAIAnalysis, fetchUserProfile, type DashboardData } from "@/lib/api";
-import { Loader2, RefreshCw, PlusCircle, AlertTriangle } from "lucide-react";
+import { fetchDashboardData, fetchAIAnalysis, fetchUserProfile, calibrateSensors, uploadImageForDiagnosis, type DashboardData } from "@/lib/api";
+import { Loader2, RefreshCw, PlusCircle, AlertTriangle, Settings2, Camera } from "lucide-react";
 import clsx from "clsx";
 import TermsAgreementModal from "@/components/TermsAgreementModal";
 import DataInputModal from "@/components/DataInputModal";
+import CalibrationModal from "@/components/CalibrationModal";
 
 import { getFarmCondition, getVPDSignal } from "@/lib/farm-signals";
 import LocationDisplay from '@/components/LocationDisplay';
@@ -37,6 +38,9 @@ export default function Dashboard() {
   // AI State
   const [analyzing, setAnalyzing] = useState(false);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
+
+  // Calibration State
+  const [showCalibration, setShowCalibration] = useState(false);
 
   // Strategy 1: Detect user's country on mount
   useEffect(() => {
@@ -168,7 +172,7 @@ export default function Dashboard() {
     }
   };
 
-  const executeAnalysis = async () => {
+  const executeAnalysis = async (feedback?: string) => {
     if (!data) return;
     setAnalyzing(true);
     try {
@@ -177,7 +181,8 @@ export default function Dashboard() {
         data.indoor.temperature,
         data.indoor.humidity,
         data.weather.rain,
-        data.weather.wind_speed
+        data.weather.wind_speed,
+        feedback // Pass feedback if exists
       );
 
       if (result.insight && typeof result.insight === 'object') {
@@ -201,8 +206,49 @@ export default function Dashboard() {
   };
 
   async function handleAnalyze() {
-    checkTermsAndAction(executeAnalysis);
+    checkTermsAndAction(() => executeAnalysis());
   }
+
+  async function handleFeedback(response: string) {
+    // User answered the question (e.g., "Yes" leads to "Leaves are wilting")
+    let feedbackText = `User visual confirmation: ${response}`;
+    if (response === "Yes") feedbackText = "Visual Check: Leaves are definitely wilting/abnormal.";
+    if (response === "No") feedbackText = "Visual Check: Leaves look healthy and normal.";
+
+    // Trigger re-analysis with strict feedback
+    executeAnalysis(feedbackText);
+  }
+
+  const handleCalibrationSubmit = async (realTemp: number) => {
+    setShowCalibration(false);
+    try {
+      // Assume current weather is available in data
+      await calibrateSensors(realTemp, data?.weather);
+      alert("Physics Engine Calibrated! The system will now learn from this offset.");
+      loadData(); // Reload to see if estimate changes (though it learns slowly)
+    } catch (e) {
+      alert("Calibration failed. Please try again.");
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    const file = e.target.files[0];
+
+    setAnalyzing(true);
+    try {
+      const result = await uploadImageForDiagnosis(file);
+      // Assuming the result comes back as a text analysis
+      // We force an update to the insight view
+      setAiInsight(`[IMAGE ANALYSIS RESULT]\n${result.analysis || result}`);
+      // Clear meta since this is a direct image result
+      setData(prev => prev ? ({ ...prev, ai_meta: undefined }) : null);
+    } catch (err) {
+      alert("Image analysis failed.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const handleDataInputClick = () => {
     checkTermsAndAction(() => setShowDataInput(true));
@@ -328,6 +374,12 @@ export default function Dashboard() {
                     <div className="mt-1 flex items-center gap-1 text-xs text-purple-600">
                       <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
                       Physics Model Est.
+                      <button
+                        onClick={() => setShowCalibration(true)}
+                        className="ml-2 px-1.5 py-0.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded text-[10px] uppercase font-bold tracking-wide transition-colors"
+                      >
+                        Fix?
+                      </button>
                     </div>
                   )}
                 </div>
@@ -412,7 +464,11 @@ export default function Dashboard() {
                       <p className="font-semibold text-yellow-100 mb-2">{data.ai_meta.user_question.text}</p>
                       <div className="flex flex-wrap gap-2">
                         {data.ai_meta.user_question.options.map(opt => (
-                          <button key={opt} className="px-3 py-1.5 text-xs font-bold bg-yellow-500 text-slate-900 hover:bg-yellow-400 rounded-lg transition-colors shadow-lg shadow-yellow-500/20">
+                          <button
+                            key={opt}
+                            onClick={() => handleFeedback(opt)}
+                            className="px-3 py-1.5 text-xs font-bold bg-yellow-500 text-slate-900 hover:bg-yellow-400 rounded-lg transition-colors shadow-lg shadow-yellow-500/20 active:scale-95"
+                          >
                             {opt}
                           </button>
                         ))}
@@ -439,9 +495,13 @@ export default function Dashboard() {
 
             {/* Footer */}
             <div className="pt-4 border-t border-indigo-500/30 flex justify-between items-center text-xs text-indigo-300">
-              <span>
-                Safety Guard: Active
-              </span>
+              <div className="flex items-center gap-2">
+                <span>Safety Guard: Active</span>
+                <label className="cursor-pointer hover:text-white transition-colors flex items-center gap-1" title="Upload Plant Photo">
+                  <Camera className="w-3.5 h-3.5" />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
+              </div>
               <button
                 onClick={handleAnalyze}
                 disabled={analyzing}
@@ -490,6 +550,14 @@ export default function Dashboard() {
           />
         )
       }
+
+      {showCalibration && data && (
+        <CalibrationModal
+          currentEst={data.indoor.temperature}
+          onClose={() => setShowCalibration(false)}
+          onSubmit={handleCalibrationSubmit}
+        />
+      )}
     </div >
   );
 }

@@ -57,7 +57,14 @@ export async function fetchDashboardData(
     return res.json();
 }
 
-export async function fetchAIAnalysis(crop: string, temp: number, humidity: number, rain: number, wind: number) {
+export async function fetchAIAnalysis(
+    crop: string,
+    temp: number,
+    humidity: number,
+    rain: number,
+    wind: number,
+    feedback?: string
+) {
     const params = new URLSearchParams({
         crop_type: crop,
         temp: temp.toString(),
@@ -66,6 +73,10 @@ export async function fetchAIAnalysis(crop: string, temp: number, humidity: numb
         wind: wind.toString()
     });
 
+    if (feedback) {
+        params.append("user_feedback", feedback);
+    }
+
     const res = await fetch(`${API_BASE_url}/ai/analyze?${params}`, {
         cache: "no-store",
         next: { revalidate: 0 }
@@ -73,6 +84,20 @@ export async function fetchAIAnalysis(crop: string, temp: number, humidity: numb
     if (!res.ok) {
         throw new Error("AI Analysis failed");
     }
+    return res.json();
+}
+
+export async function calibrateSensors(actualTemp: number, weatherData: any) {
+    const res = await fetch(`${API_BASE_url}/sensors/calibrate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            actual_temp: actualTemp,
+            weather: weatherData
+        }),
+        cache: "no-store"
+    });
+    if (!res.ok) throw new Error("Calibration failed");
     return res.json();
 }
 

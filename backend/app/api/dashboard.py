@@ -138,7 +138,10 @@ async def get_dashboard_data(
 
         
         # 3. AI Analysis (Now integrated into Dashboard)
-        ai_result = analyze_situation(weather, "tomato") # Default crop
+        # Check for optional feedback handling (not in main GET, but structure ready)
+        # Default AI run usually has no feedback unless explicitly requested via separate call.
+        
+        ai_result = analyze_situation(weather, crop_type or "tomato") # Default crop
         
         # Check if result is dict (New Format) or str (Old/Error)
         if isinstance(ai_result, dict):
@@ -202,11 +205,51 @@ def get_vpd_status(vpd):
     return "Risk: High (Dry)"
 
 @router.get("/ai/analyze")
-def ai_analyze(crop_type: str, temp: float, humidity: float, rain: float, wind: float):
+def ai_analyze(
+    crop_type: str, 
+    temp: float, 
+    humidity: float, 
+    rain: float, 
+    wind: float,
+    user_feedback: str = None
+):
     # Reconstruct weather dict for the AI Engine
     weather = {"temperature": temp, "humidity": humidity, "rain": rain, "wind_speed": wind}
     try:
-        insight = analyze_situation(weather, crop_type)
+        # Now pass feedback to the engine
+        insight = analyze_situation(weather, crop_type, user_feedback=user_feedback)
         return {"insight": insight}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/sensors/calibrate")
+def calibrate_sensors(
+    data: dict 
+):
+    """
+    Endpoint for users to submit REAL ground truth to improve Physics Engine.
+    Body: { "actual_temp": 25.5, "weather": {...} }
+    """
+    try:
+        actual_temp = data.get("actual_temp")
+        weather = data.get("weather") # Must match external weather format
+        
+        # Convert inputs to metric if needed
+        # We assume frontend passes nicely formatted data or we handle it.
+        # Physics engine expects metric web inputs usually.
+        
+        w_metric = {
+            "temperature": (float(weather['temperature']) - 32) * 5/9,
+            "humidity": float(weather.get('humidity') or 50),
+            "wind_speed": float(weather.get('wind_speed') or 0) * 0.44704,
+            "rain": float(weather.get('rain') or 0) * 25.4,
+            "is_day": True 
+        }
+        
+        result = physics_engine.calibrate_model((float(actual_temp) - 32) * 5/9, w_metric)
+        return result
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

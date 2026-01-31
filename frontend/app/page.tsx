@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { fetchDashboardData, fetchAIAnalysis, fetchUserProfile, type DashboardData } from "@/lib/api";
-import { Loader2, RefreshCw, MapPin, Search, PlusCircle, LocateFixed } from "lucide-react";
+import { Loader2, RefreshCw, PlusCircle, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
 import TermsAgreementModal from "@/components/TermsAgreementModal";
 import DataInputModal from "@/components/DataInputModal";
-import LocationSetupModal from "@/components/LocationSetupModal";
+
 import { getFarmCondition, getVPDSignal } from "@/lib/farm-signals";
+import LocationDisplay from '@/components/LocationDisplay';
 import CropSelector from "@/components/CropSelector";
 import { DEFAULT_CROP } from "@/lib/crops";
 import {
@@ -23,14 +24,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState("San Francisco");
   const [selectedCropId, setSelectedCropId] = useState(DEFAULT_CROP);
-  const [isEditingLocation, setIsEditingLocation] = useState(false);
-  const [tempCity, setTempCity] = useState(city);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [userCountry, setUserCountry] = useState<string | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
 
-  // Location Setup Modal (for first-time visitors)
-  const [showLocationSetup, setShowLocationSetup] = useState(false);
 
   // User & Terms State
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -47,7 +41,7 @@ export default function Dashboard() {
   // Strategy 1: Detect user's country on mount
   useEffect(() => {
     const country = detectUserCountry();
-    setUserCountry(country);
+    // setUserCountry removed
     console.log(`🌍 Detected user country: ${country || 'Unknown'}`);
   }, []);
 
@@ -63,12 +57,11 @@ export default function Dashboard() {
           loadData(undefined, savedLoc.lat, savedLoc.lon);
         } else if (savedLoc.city) {
           setCity(savedLoc.city);
-          setTempCity(savedLoc.city);
           loadData(savedLoc.city, undefined, undefined, savedLoc.country);
         }
       } else if (isFirstVisit()) {
-        // First visit: show location setup modal
-        setShowLocationSetup(true);
+        // First visit: let LocationDisplay handle the setup modal
+        loadData();
       } else {
         // Regular visit without saved location
         loadData();
@@ -82,12 +75,12 @@ export default function Dashboard() {
 
   async function loadData(cityName?: string, lat?: number, lon?: number, countryCode?: string) {
     setLoading(true);
-    setLocationError(null);
+    // setLocationError(null);
     try {
       const targetCity = cityName || city;
 
       // Strategy 1: Pass detected country (or saved country) to API for better geocoding
-      const targetCountry = countryCode || userCountry || undefined;
+      const targetCountry = countryCode || detectUserCountry() || undefined;
       let dashboardData = await fetchDashboardData(targetCity, lat, lon, targetCountry);
 
       // Check for backend error or empty data
@@ -134,7 +127,6 @@ export default function Dashboard() {
         // Only update city if it's different to prevent loops
         if (city !== dashboardData.location.name) {
           setCity(dashboardData.location.name);
-          setTempCity(dashboardData.location.name);
         }
       } else if (cityName && dashboardData.location.name) {
         // Save city-based location
@@ -147,85 +139,22 @@ export default function Dashboard() {
         saveLocation(locationToSave);
         // Update displayed city name if successful
         setCity(dashboardData.location.name);
-        setTempCity(dashboardData.location.name);
       }
 
       setData(dashboardData);
-      setLocationError(null);
+      // setLocationError(null);
     } catch (e: any) {
       console.error(e);
       // setData(null); // Keep previous data if possible? Or clear it? 
       // Let's keep data if available, but show error. 
       // If it's a "not found" error, maybe we should clear.
-      setLocationError(cityName ? `Could not find "${cityName}". Try another city.` : 'Failed to load data.');
+      // setLocationError(cityName ? `Could not find "${cityName}". Try another city.` : 'Failed to load data.');
     } finally {
       setLoading(false);
     }
   }
 
-  function handleCitySubmit(e: React.FormEvent) {
-    e.preventDefault();
 
-    // Validation: Check for empty input
-    if (!tempCity.trim()) {
-      setLocationError("Please enter a valid city name.");
-      return;
-    }
-
-    // Optimization: Prevent duplicate requests
-    if (loading) return;
-
-    setIsEditingLocation(false);
-    // Explicitly load data since we removed the useEffect
-    loadData(tempCity.trim());
-  }
-
-  // Handle "Use My Location" button
-  function handleUseCurrentLocation() {
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by your browser");
-      return;
-    }
-
-    setIsGettingLocation(true);
-    setLocationError(null);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        loadData(undefined, latitude, longitude);
-        setIsGettingLocation(false);
-        setIsEditingLocation(false);
-      },
-      (error) => {
-        console.error("Geolocation error:", error);
-        setIsGettingLocation(false);
-        let msg = "Unable to retrieve your location";
-        if (error.code === 1) msg = "Location permission denied";
-        else if (error.code === 2) msg = "Location unavailable";
-        else if (error.code === 3) msg = "Location request timed out";
-        setLocationError(msg);
-      },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-    );
-  }
-
-  // Handle location setup modal
-  const handleLocationSetup = (city?: string, lat?: number, lon?: number) => {
-    setShowLocationSetup(false);
-    if (lat && lon) {
-      loadData(undefined, lat, lon);
-    } else if (city) {
-      setCity(city);
-      setTempCity(city);
-      loadData(city);
-    }
-  };
-
-  const handleSkipLocationSetup = () => {
-    setShowLocationSetup(false);
-    loadData(); // Load with default
-  };
 
   // Removed: This caused infinite loop because loadData() can call setCity()
 
@@ -250,7 +179,20 @@ export default function Dashboard() {
         data.weather.rain,
         data.weather.wind_speed
       );
-      setAiInsight(result.insight);
+
+      if (result.insight && typeof result.insight === 'object') {
+        setAiInsight(result.insight.analysis_text);
+        // Update global data state with new metadata
+        setData(prev => prev ? ({
+          ...prev,
+          ai_meta: {
+            confidence_score: result.insight.confidence_score,
+            user_question: result.insight.validation_question
+          }
+        }) : null);
+      } else {
+        setAiInsight(result.insight);
+      }
     } catch (e) {
       setAiInsight("⚠️ Connection Error: Unable to reach AI services. Please check backend logs.");
     } finally {
@@ -314,12 +256,20 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
             Dashboard
           </h2>
-          <p className="text-slate-500">Real-time Farm Monitoring & AI Insights</p>
+          <div className="flex items-center gap-2">
+            <p className="text-slate-500">Real-time Farm Monitoring & AI Insights</p>
+            {data?.indoor?.vpd_status?.includes("Virtual") && (
+              <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full border border-purple-200 font-medium">
+                ✨ Sensorless Optimized
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -327,54 +277,8 @@ export default function Dashboard() {
             selectedCropId={selectedCropId}
             onCropChange={setSelectedCropId}
           />
-
-          {isEditingLocation ? (
-            <form onSubmit={handleCitySubmit} className="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
-              <Search size={14} className="text-slate-400" />
-              <input
-                type="text"
-                value={tempCity}
-                onChange={(e) => setTempCity(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                className="text-sm outline-none text-slate-700 w-32"
-                placeholder="Enter City..."
-                autoFocus
-              />
-              <button type="button" onClick={handleUseCurrentLocation} className="text-slate-400 hover:text-emerald-600" title="Use My Location">
-                {isGettingLocation ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
-              </button>
-              <button type="submit" className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-medium hover:bg-emerald-200">
-                Set
-              </button>
-            </form>
-          ) : (
-            <button
-              onClick={() => {
-                setTempCity('');
-                setIsEditingLocation(true);
-                setLocationError(null);
-              }}
-              className="flex items-center gap-1.5 text-sm bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm hover:border-emerald-200 hover:text-emerald-700 transition-all group"
-            >
-              <MapPin size={14} className="text-slate-400 group-hover:text-emerald-500" />
-              <span className="font-medium text-slate-600 group-hover:text-emerald-700">{data.location.name}</span>
-            </button>
-          )}
-
-          <button
-            onClick={handleUseCurrentLocation}
-            className="text-sm text-slate-400 hover:text-emerald-600 font-medium flex items-center gap-1 px-2"
-            title="Use My Location"
-            disabled={isGettingLocation}
-          >
-            {isGettingLocation ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
-          </button>
+          <LocationDisplay />
         </div>
-        {locationError && (
-          <div className="mt-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-200">
-            {locationError}
-          </div>
-        )}
       </div>
 
       {/* Today's Farm Condition Banner */}
@@ -419,6 +323,13 @@ export default function Dashboard() {
                   <p className={clsx("text-sm font-medium mt-1",
                     data.indoor.vpd_status?.includes("Risk") ? "text-yellow-600" : "text-emerald-600"
                   )}>{data.indoor.vpd_status}</p>
+
+                  {data.indoor.vpd_status?.includes("Virtual") && (
+                    <div className="mt-1 flex items-center gap-1 text-xs text-purple-600">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
+                      Physics Model Est.
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <div className="text-slate-500 text-sm">Temp</div>
@@ -469,48 +380,75 @@ export default function Dashboard() {
 
         {/* Right Column: AI Action Plan */}
         <div className="lg:col-span-1">
-          <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl p-6 shadow-sm border border-slate-200 h-full flex flex-col">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">🤖</span>
-              <h3 className="font-bold text-slate-800">AI Agronomist Plan</h3>
+          <div className="bg-slate-900 rounded-2xl p-6 shadow-xl border border-slate-700 h-full flex flex-col text-white">
+            {/* Header with Connectivity Status */}
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <p className="text-xs font-semibold text-indigo-200 uppercase tracking-wider mb-1">AI Diagnostics</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-bold">Hybrid Intelligence</h3>
+                  {data.ai_meta && (
+                    <div className={clsx("px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                      data.ai_meta.confidence_score > 0.8 ? "bg-emerald-500/20 text-emerald-300" : "bg-yellow-500/20 text-yellow-300"
+                    )}>
+                      {Math.round(data.ai_meta.confidence_score * 100)}% Confidence
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-2 bg-indigo-500/20 rounded-lg">
+                <RefreshCw className={clsx("w-6 h-6 text-indigo-300", analyzing ? "animate-spin" : "")} />
+              </div>
             </div>
 
-            <div className="space-y-4 flex-1">
-              <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm min-h-[120px]">
-                {aiInsight ? (
-                  <div className="prose prose-sm prose-slate max-w-none">
-                    <p className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed font-medium">
-                      {aiInsight}
-                    </p>
+            {/* AI Content Area */}
+            <div className="flex-1 overflow-y-auto mb-4 custom-scrollbar">
+              {/* 1. Validation Question (High Priority) */}
+              {data.ai_meta?.user_question ? (
+                <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-yellow-100 mb-2">{data.ai_meta.user_question.text}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {data.ai_meta.user_question.options.map(opt => (
+                          <button key={opt} className="px-3 py-1.5 text-xs font-bold bg-yellow-500 text-slate-900 hover:bg-yellow-400 rounded-lg transition-colors shadow-lg shadow-yellow-500/20">
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-slate-400 italic text-center mt-8">
-                    {!data.indoor.temperature ?
-                      "Please record farm data first to get AI diagnosis." :
-                      `Click analyze to get a real-time diagnosis for your ${data.crop}.`
-                    }
-                  </p>
-                )}
-              </div>
+                </div>
+              ) : null}
 
+              {/* 2. Main Analysis Text */}
+              {analyzing ? (
+                <div className="flex flex-col items-center justify-center h-40 text-indigo-200">
+                  <Loader2 className="w-8 h-8 animate-spin mb-3" />
+                  <p className="text-sm font-medium">Synthesizing Physics & AI...</p>
+                </div>
+              ) : (
+                <div className="prose prose-invert prose-sm max-w-none">
+                  <div className="whitespace-pre-wrap font-light leading-relaxed text-indigo-50">
+                    {aiInsight || data.ai_analysis || "System Standby. Waiting for environmental triggers..."}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="pt-4 border-t border-indigo-500/30 flex justify-between items-center text-xs text-indigo-300">
+              <span>
+                Safety Guard: Active
+              </span>
               <button
                 onClick={handleAnalyze}
-                disabled={analyzing || !data.indoor.temperature}
-                className={clsx(
-                  "w-full font-medium py-3 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2",
-                  (analyzing || !data.indoor.temperature) ? "bg-slate-100 text-slate-400 shadow-none cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200"
-                )}
+                disabled={analyzing}
+                className="hover:text-white flex items-center gap-1 transition-colors"
               >
-                {analyzing ? (
-                  <><Loader2 className="animate-spin" /> Analyzing...</>
-                ) : (
-                  <span>Analyze Conditions</span>
-                )}
+                Refresh
               </button>
-
-              <div className="text-center mt-auto">
-                <p className="text-xs text-slate-400">Powered by Gemini 1.5 Flash</p>
-              </div>
             </div>
           </div>
         </div>
@@ -527,33 +465,31 @@ export default function Dashboard() {
       </button>
 
       {/* Modals */}
-      {showLocationSetup && (
-        <LocationSetupModal
-          isOpen={showLocationSetup}
-          onLocationSet={handleLocationSetup}
-          onSkip={handleSkipLocationSetup}
-        />
-      )}
+      {/* LocationSetupModal is now handled by LocationDisplay */}
 
-      {showDataInput && (
-        <DataInputModal
-          onClose={() => setShowDataInput(false)}
-          onSubmit={handleDataSubmit}
-          isLoggedIn={!!userProfile}
-        />
-      )}
+      {
+        showDataInput && (
+          <DataInputModal
+            onClose={() => setShowDataInput(false)}
+            onSubmit={handleDataSubmit}
+            isLoggedIn={!!userProfile}
+          />
+        )
+      }
 
-      {showTermsModal && (
-        <TermsAgreementModal
-          isOpen={showTermsModal}
-          onAgree={() => {
-            setShowTermsModal(false);
-            setUserProfile({ ...userProfile, is_terms_agreed: 1 });
-            if (termsTriggerAction) termsTriggerAction();
-            setTermsTriggerAction(null);
-          }}
-        />
-      )}
-    </div>
+      {
+        showTermsModal && (
+          <TermsAgreementModal
+            isOpen={showTermsModal}
+            onAgree={() => {
+              setShowTermsModal(false);
+              setUserProfile({ ...userProfile, is_terms_agreed: 1 });
+              if (termsTriggerAction) termsTriggerAction();
+              setTermsTriggerAction(null);
+            }}
+          />
+        )
+      }
+    </div >
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Settings } from 'lucide-react';
 import LocationSetupModal from './LocationSetupModal';
+import { saveLocation } from '@/lib/location';
 
 export default function LocationDisplay() {
     const [location, setLocation] = useState<{
@@ -43,22 +44,85 @@ export default function LocationDisplay() {
         }
     };
 
-    const handleLocationSet = (city?: string, lat?: number, lon?: number) => {
-        // If we have coordinates, we might not have city name immediately
-        // In a real app, we might want to reverse geocode here or trigger a backend update
-        // For now, update local state with what we have
+    const handleLocationSet = async (city?: string, lat?: number, lon?: number) => {
+        let cityName = city;
+        let regionName = "";
+        let countryName = "";
 
-        setLocation(prev => ({
-            ...prev,
-            city: city || (lat && lon ? "Current Location" : prev.city),
-            region: null, // Reset as we don't know it yet
-            country: null,
-            hasLocation: true
-        }));
-        setShowModal(false);
+        // If we have coordinates but no city, perform reverse geocoding
+        if (!cityName && lat && lon) {
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+                );
+                const data = await response.json();
 
-        // Optionally reload page or trigger parent update if needed
-        // window.location.reload(); 
+                // Extract city/town/village and other details
+                const address = data.address;
+                cityName = address.city || address.town || address.village || address.suburb;
+                regionName = address.state || address.region;
+                countryName = address.country;
+
+                if (!cityName) {
+                    console.error("Could not determine city from coordinates");
+                    // Fallback using region if city not found
+                    cityName = regionName || "Unknown Location";
+                }
+            } catch (error) {
+                console.error("Reverse geocoding failed:", error);
+                // Fallback
+                cityName = "Current Location";
+            }
+        }
+
+        // Send to backend
+        try {
+            const payload = {
+                city: cityName,
+                region: regionName,
+                country: countryName,
+                consent: true
+            };
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/location/set`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+                // Update local state
+                setLocation({
+                    city: cityName || null,
+                    region: regionName || null,
+                    country: countryName || null,
+                    hasLocation: true
+                });
+
+                // Sync with localStorage (Adapter for existing logic)
+                if (cityName) {
+                    saveLocation({
+                        name: cityName,
+                        city: cityName,
+                        country: countryName || undefined,
+                        lat: lat,
+                        lon: lon,
+                        timestamp: Date.now()
+                    });
+                }
+
+                setShowModal(false);
+
+                // Reload to refresh any location-dependent components (like weather)
+                window.location.reload();
+            } else {
+                console.error("Failed to save location to backend");
+            }
+        } catch (error) {
+            console.error("Error saving location:", error);
+        }
     };
 
     if (loading) {

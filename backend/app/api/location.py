@@ -197,9 +197,12 @@ async def get_location_based_weather(user_id: str = Depends(get_current_user_id)
         conn.close()
         
         if not row or not row["location_city"]:
-            # No stored location, use IP detection
-            ip_location = await detect_location_from_ip()
-            city = ip_location["city"]
+            # No stored location, return 404 asking client to set location
+            # Server-side IP detection was removed for privacy/accuracy
+            raise HTTPException(
+                status_code=404, 
+                detail="Location not set. Please set your location to get weather data."
+            )
         else:
             city = row["location_city"]
         
@@ -209,5 +212,7 @@ async def get_location_based_weather(user_id: str = Depends(get_current_user_id)
             "message": "Use this city for weather API calls"
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get weather location: {str(e)}")

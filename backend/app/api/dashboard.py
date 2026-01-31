@@ -6,6 +6,7 @@ import os
 
 # Database path
 from app.core.config import DB_NAME
+from app.services.physics_engine import physics_engine
 
 router = APIRouter()
 
@@ -109,7 +110,46 @@ async def get_dashboard_data(
                 "soil_moisture": indoor_row['soil_moisture'],
                 "timestamp": indoor_row['timestamp']
             }
+        else:
+            # NO SENSOR DATA -> ACTIVATE VIRTUAL SENSOR (PHYSICS ENGINE)
+            if weather is not None and weather.get('temperature') is not None:
+                # Convert F to C for physics engine (metric-based)
+                w_metric = {
+                    "temperature": (float(weather['temperature']) - 32) * 5/9,
+                    "humidity": float(weather['humidity'] or 50),
+                    "wind_speed": float(weather['wind_speed'] or 0) * 0.44704,
+                    "rain": float(weather['rain'] or 0) * 25.4,
+                    "is_day": True # In real app, check sunrise/sunset
+                }
+                
+                micro = physics_engine.estimate_microclimate(w_metric)
+                
+                # Convert back to Imperial for US Dashboard
+                est_temp_f = (micro['temperature'] * 9/5) + 32
+                
+                indoor_data = {
+                    "temperature": round(est_temp_f, 1),
+                    "humidity": micro['humidity'],
+                    "vpd": micro['vpd'],
+                    "vpd_status": get_vpd_status(micro['vpd']) + " (Virtual)",
+                    "soil_moisture": None, # Cannot estimate soil without more inputs
+                    "timestamp": "Estimated Now"
+                }
 
+        
+        # 3. AI Analysis (Now integrated into Dashboard)
+        ai_result = analyze_situation(weather, "tomato") # Default crop
+        
+        # Check if result is dict (New Format) or str (Old/Error)
+        if isinstance(ai_result, dict):
+            ai_analysis = ai_result.get("analysis_text", "AI Service Unavailable")
+            confidence = ai_result.get("confidence_score", 0.0)
+            question = ai_result.get("validation_question", None)
+        else:
+            ai_analysis = str(ai_result)
+            confidence = 0.0
+            question = None
+            
         return {
             "location": {
                 "name": location_name,
@@ -119,6 +159,11 @@ async def get_dashboard_data(
             },
             "weather": weather, # Outside weather is always real
             "indoor": indoor_data,
+            "ai_analysis": ai_analysis,
+            "ai_meta": {
+                "confidence_score": confidence,
+                "user_question": question
+            },
             "crop": crop_type
         }
         

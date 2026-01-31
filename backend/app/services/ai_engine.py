@@ -4,6 +4,10 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from functools import lru_cache
 from .db_handler import log_safety_event, get_weekly_stats
+from .db_handler import log_safety_event, get_weekly_stats
+from .physics_engine import physics_engine
+from .safety_filter import safety_filter
+# from .claude_service import get_claude_response (Reverted to Gemini)
 
 load_dotenv()
 
@@ -14,21 +18,10 @@ def get_api_key():
 def get_active_model_name():
     try:
         api_key = get_api_key()
-        if not api_key: return "gemini-pro"
-        
-        genai.configure(api_key=api_key)
-        models = genai.list_models()
-        candidates = []
-        for m in models:
-            if "generateContent" in m.supported_generation_methods:
-                name = m.name.replace("models/", "")
-                candidates.append(name)
-        
-        preferred = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
-        for pref in preferred:
-            if pref in candidates:
-                return pref
-        return candidates[0] if candidates else "gemini-pro"
+        if not api_key: return "gemini-1.5-pro"
+    
+        # Force use of Gemini 1.5 Pro for maximum reasoning capability
+        return "gemini-1.5-pro"
     except:
         return "gemini-pro"
 
@@ -100,20 +93,85 @@ def load_knowledge_base():
         return {}
 
 def analyze_situation(weather, crop_type):
+    """
+    Analyzes current conditions using the 10-Step Hybrid Safety Filter.
+    """
     kb = load_knowledge_base()
     crop_info = kb.get(crop_type, {})
     
-    context = f"""
-    [Situation Report]
-    Crop: {crop_type}
-    Weather: {weather['temperature']}F, {weather['humidity']}%, Rain: {weather['rain']}in, Wind: {weather['wind_speed']}mph
+    # Define the core AI generation logic as a callback function
+    def ai_generator(microclimate):
+        # 1. Fetch Safety Limits
+        safety_limits = physics_engine.get_safety_limits(crop_type)
+        
+        # 2. Construct Context based on VALIDATED physics data
+        context = f"""
+        [Hybrid Sensor Data - Physics Engine v1]
+        The following data is ESTIMATED based on physical models (Sensorless Technology):
+        
+        * Estimated Internal Temp: {microclimate['temperature']}°C ({(microclimate['temperature']*9/5)+32:.1f}°F)
+        * Estimated Internal Humidity: {microclimate['humidity']}%
+        * Calculated VPD: {microclimate['vpd']} kPa
+        
+        [External Weather Conditions]
+        Temp: {weather['temperature']}F, Humidity: {weather['humidity']}%, Rain: {weather['rain']}in, Wind: {weather['wind_speed']}mph
+        
+        [Crop Safety Limits for {crop_type}]
+        Optimal VPD: {safety_limits['vpd_min']} - {safety_limits['vpd_max']} kPa
+        Max Safe Temp: {safety_limits['temp_max']}°C
+        """
+        
+        # 3. Call AI
+        system_prompt = f"""
+        You are {get_active_model_name()} (ForHumanAI), an AI assistant for agriculture.
+        
+        [LEGAL & SAFETY PROTOCOLS]
+        1. NEVER provide a diagnosis as 'Final'. Always use terms like "Potential risk".
+        2. NEVER recommend specific chemical brand names.
+        
+        Output Format:
+        - **Status**: [Normal / Warning / Critical]
+        - **Prescription**: [Actionable advice]
+        - **Reasoning**: [Explain using the data provided]
+        """
+        
+        return get_gemini_response(context, crop_type, role="Smart Farm Hybrid Engine")
+
+    # EXECUTE 10-STEP SAFETY PIPELINE
+    response_text = safety_filter.run_pipeline(weather, crop_type, ai_generator)
     
-    [Optimal Ranges]
-    Temp: {crop_info.get('temp_min')}-{crop_info.get('temp_max')}F
-    Humidity: {crop_info.get('humidity_min')}-{crop_info.get('humidity_max')}%
-    """
+    # Post-Process: Calculate Confidence & Trigger Questions
+    # In a real system, this would be computed by comparing AI Output vs Physics Data
+    # For now, we implement a heuristic rule.
     
-    return get_gemini_response(context, crop_type, role="US Agricultural Extension Agent")
+    classification = "Normal"
+    if "Warning" in response_text: classification = "Warning"
+    if "Critical" in response_text: classification = "Critical"
+    
+    # Confidence Logic:
+    # 1. If Physics Data (VPD) is Extreme -> Confidence High (Physics is reliable)
+    # 2. If Physics Data is Moderate but AI alerts -> Confidence Low (Needs verification)
+    
+    confidence_score = 0.95 # Default high
+    question = None
+    
+    limits = physics_engine.get_safety_limits(crop_type)
+    temp_c = microclimate['temperature']
+    
+    # Edge Case: Moderate Sensing but AI Warning
+    if classification != "Normal" and (limits['temp_min'] < temp_c < limits['temp_max']):
+        confidence_score = 0.65
+        question = {
+            "id": "visual_check_1",
+            "text": "The system detects potential risk, but sensors are normal. Do you see wilting leaves?",
+            "options": ["Yes", "No", "Unsure"]
+        }
+        
+    return {
+        "analysis_text": response_text,
+        "confidence_score": confidence_score,
+        "validation_question": question
+    }
 
 def generate_weekly_report(crop_type):
     stats = get_weekly_stats(crop_type)
@@ -140,9 +198,8 @@ def generate_weekly_report(crop_type):
         
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel(get_active_model_name()) # Use generic getter
         
-        # SAFETY PROMPT
         system_safety_prompt = """
         IMPORTANT LEGAL DISCLAIMER:
         You are an AI assistant. Do NOT provide binding professional advice.
@@ -161,8 +218,6 @@ def generate_weekly_report(crop_type):
         2. **Summary**: What went well/wrong.
         3. **Next Week Advice**: Focus area.
         
-        Examples of Advice: "Maintain humidity", "Watch for temperature drops", "Check irrigation".
-        
         [DISCLAIMER]: This report is AI-generated based on user data. Verify all conditions manually.
         """
         response = model.generate_content(prompt)
@@ -178,9 +233,9 @@ def analyze_crop_image(image_data):
     try:
         genai.configure(api_key=api_key)
         model_name = get_active_model_name()
-        # Ensure model supports vision
-        if "flash" not in model_name and "1.5" not in model_name:
-            model_name = "gemini-1.5-flash"
+        # Verify vision support just in case
+        if "pro" not in model_name and "flash" not in model_name:
+             model_name = "gemini-1.5-pro"
             
         model = genai.GenerativeModel(model_name)
         
@@ -188,39 +243,27 @@ def analyze_crop_image(image_data):
         IMPORTANT LEGAL & SAFETY CHECK:
         1. YOU ARE AN AI ASSISTANT, NOT A PLANT PATHOLOGIST.
         2. Identify the crop.
-        3. Suggest POTENTIAL causes for symptoms (e.g., "This resembles powdery mildew").
-        4. Recommend NON-CHEMICAL controls (removing leaves, improving airflow).
+        3. Suggest POTENTIAL causes for symptoms.
+        4. Recommend NON-CHEMICAL controls FIRST.
         5. DO NOT PRESCRIBE SPECIFIC FUNGICIDES OR PESTICIDES.
         6. Always advise consulting a local expert.
 
-        Task:
-        1. Identify the crop.
-        2. Diagnose potential issues.
-        3. Recommend safe management practices.
-        
-        If healthy, say "Healthy" and estimate yield potential.
-        
-        [DISCLAIMER]: This analysis is for informational purposes only and is not a professional diagnosis.
+        [DISCLAIMER]: This analysis is for informational purposes only.
         """
-        
 
         response = model.generate_content([prompt, image_data])
-        final_text = response.text
-        disclaimer = "\n\n[MANDATORY DISCLAIMER]: This analysis is generated by AI for informational purposes only. It is NOT a professional diagnosis and should not be used as a basis for chemical treatment or financial decisions. Always consult a certified agricultural extension agent."
-        if "[DISCLAIMER]" not in final_text:
-            final_text += disclaimer
-        return final_text
+        return response.text
     except Exception as e:
         return f"Global API Error: {str(e)}"
 
 def analyze_pest_risk_with_ai(weather_forecast, crop_type):
+    # REVERTED TO GEMINI
     api_key = get_api_key()
-    if not api_key:
-        return []
+    if not api_key: return []
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-1.5-flash") # Flash is fine for simple JSON tasks
         
         prompt = f"""
         You are an expert plant pathologist. 
@@ -248,9 +291,7 @@ def analyze_pest_risk_with_ai(weather_forecast, crop_type):
         
         # Robust Clean & Parse
         try:
-            # Remove any markdown wrapping if present
             text = text.replace("```json", "").replace("```", "").strip()
-            
             import re
             match = re.search(r'\[.*\]', text, re.DOTALL)
             if match:
@@ -264,9 +305,9 @@ def analyze_pest_risk_with_ai(weather_forecast, crop_type):
         return []
 
 def analyze_market_prices_with_ai(crop_type):
+    # REVERTED TO GEMINI
     api_key = get_api_key()
-    if not api_key:
-        return generate_fallback_market_data()
+    if not api_key: return generate_fallback_market_data()
 
     try:
         genai.configure(api_key=api_key)
@@ -292,9 +333,7 @@ def analyze_market_prices_with_ai(crop_type):
         text = response.text.strip()
         
         try:
-            # Remove any markdown wrapping if present
             text = text.replace("```json", "").replace("```", "").strip()
-            
             import re
             match = re.search(r'\[.*\]', text, re.DOTALL)
             if match:
@@ -305,7 +344,6 @@ def analyze_market_prices_with_ai(crop_type):
             return []
     except Exception as e:
         print(f"AI Market General Error: {e}")
-        # Fallback to estimated data instead of empty
         return generate_fallback_market_data()
 
 def generate_fallback_market_data():

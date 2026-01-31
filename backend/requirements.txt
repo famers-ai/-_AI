@@ -3,6 +3,7 @@ uvicorn
 pandas
 requests
 google-generativeai
+anthropic
 python-dotenv
 Pillow
 fpdf2

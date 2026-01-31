@@ -20,6 +20,15 @@ export interface DashboardData {
         vpd_status: string;
     };
     crop: string;
+    ai_analysis?: string;
+    ai_meta?: {
+        confidence_score: number;
+        user_question?: {
+            id: string;
+            text: string;
+            options: string[];
+        };
+    };
 }
 
 export async function fetchDashboardData(

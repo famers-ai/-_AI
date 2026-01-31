@@ -253,3 +253,37 @@ def calibrate_sensors(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/control")
+def control_farm(data: dict):
+    """
+    Virtual Controller Endpoint.
+    Body: { "action": "irrigate", "current_state": {...} }
+    """
+    try:
+        action = data.get("action")
+        current_state = data.get("current_state")
+        
+        # Validate input
+        if not action or not current_state:
+            raise HTTPException(status_code=400, detail="Missing action or state")
+            
+        # Simulate Physics
+        new_state = physics_engine.simulate_action(action, current_state)
+        return new_state
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/reports/weekly")
+def get_weekly_report(crop_type: str = "tomato"):
+    """
+    Generates a PDF-like Weekly AI Report.
+    """
+    try:
+        # Import here to avoid circular dependencies if simple
+        from app.services.ai_engine import generate_weekly_report
+        report_text = generate_weekly_report(crop_type)
+        return {"report_text": report_text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

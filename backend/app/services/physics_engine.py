@@ -44,6 +44,50 @@ class GreenhousePhysicsModel:
             "status": "Calibrated"
         }
 
+    def simulate_action(self, action_type, current_microclimate):
+        """
+        Simulates the IMMEDIATE effect of a control action on the environment.
+        Used for the Virtual Controller UI.
+        
+        Args:
+            action_type (str): 'irrigate', 'ventilate', 'shade', 'warm'
+            current_microclimate (dict): Current temp/humidity/vpd state
+            
+        Returns:
+            dict: The modified microclimate state (visual feedback)
+        """
+        # Create a copy so we don't mutate the original state persistently yet
+        # (In a full twin, we would mutate self.state, but here we just return the 'next' frame)
+        new_state = current_microclimate.copy()
+        temp = new_state['temperature']
+        hum = new_state['humidity']
+        
+        if action_type == 'irrigate':
+            # Irrigation increases humidity significantly, drops temp slightly (evaporative cooling)
+            new_state['humidity'] = min(100, hum + 15.0) 
+            new_state['temperature'] = max(0, temp - 1.5)
+            new_state['action_feedback'] = "Sprinklers Active: Humidity Rising..."
+            
+        elif action_type == 'ventilate':
+            # Ventilation brings conditions closer to outside default (assuming cooler/drier usually)
+            # For visual feedback, just drop hum and temp
+            new_state['humidity'] = max(20, hum - 10.0)
+            new_state['temperature'] = max(0, temp - 2.0)
+            new_state['action_feedback'] = "Vents Open: Air exchange in progress..."
+            
+        elif action_type == 'warm':
+            # Heater active
+            new_state['temperature'] = temp + 3.0
+            new_state['humidity'] = max(10, hum - 5.0) # Heating dries air
+            new_state['action_feedback'] = "Heater On: Temperature rising..."
+            
+        # Re-calc VPD
+        new_state['vpd'] = round(self.calculate_vpd(new_state['temperature'], new_state['humidity']), 2)
+        new_state['temperature'] = round(new_state['temperature'], 1)
+        new_state['humidity'] = round(new_state['humidity'], 1)
+        
+        return new_state
+
     def estimate_microclimate(self, external_weather):
         """
         Estimates internal temperature and humidity based on external conditions.

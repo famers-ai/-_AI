@@ -7,6 +7,7 @@ import clsx from "clsx";
 import TermsAgreementModal from "@/components/TermsAgreementModal";
 import DataInputModal from "@/components/DataInputModal";
 import CalibrationModal from "@/components/CalibrationModal";
+import ControlPanel from "@/components/ControlPanel";
 
 import { getFarmCondition, getVPDSignal } from "@/lib/farm-signals";
 import LocationDisplay from '@/components/LocationDisplay';
@@ -250,6 +251,39 @@ export default function Dashboard() {
     }
   };
 
+
+  const handleUpdateState = (newState: any) => {
+    // Optimistically update the dashboard with the simulated result
+    if (data) {
+      setData({
+        ...data,
+        indoor: {
+          ...data.indoor,
+          temperature: newState.temperature,
+          humidity: newState.humidity,
+          vpd: newState.vpd,
+          // Keep timestamp/action feedback
+        }
+      });
+
+      // Show momentary feedback toast? handled by component
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/dashboard/reports/weekly?crop_type=${selectedCropId}`);
+      if (res.ok) {
+        const json = await res.json();
+        alert(json.report_text || "Report Generated!");
+      } else {
+        alert("Failed to generate report.");
+      }
+    } catch (e) {
+      alert("Network error generating report.");
+    }
+  };
+
   const handleDataInputClick = () => {
     checkTermsAndAction(() => setShowDataInput(true));
   };
@@ -421,12 +455,15 @@ export default function Dashboard() {
           </div>
 
           {/* Empty Sensor State */}
-          <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-8 text-center">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto shadow-sm text-slate-400 mb-3">
-              <span className="text-2xl">📡</span>
-            </div>
-            <h3 className="font-medium text-slate-900">No Physical Sensors Connected</h3>
-            <p className="text-sm text-slate-500 mt-1">Connect IoT devices to view real-time Soil Moisture & EC.</p>
+          {/* Empty Sensor State REPLACED by Virtual Controller */}
+          <div className="h-[280px]">
+            {data && (
+              <ControlPanel
+                currentIndoor={data.indoor}
+                onUpdateState={handleUpdateState}
+                onGenerateReport={handleGenerateReport}
+              />
+            )}
           </div>
         </div>
 

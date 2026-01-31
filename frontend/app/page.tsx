@@ -44,8 +44,10 @@ export default function Dashboard() {
   const [showCalibration, setShowCalibration] = useState(false);
 
   // Login / Auth State
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginFarmId, setLoginFarmId] = useState("");
+
 
   // Strategy 1: Detect user's country & Check Auth
   useEffect(() => {
@@ -56,10 +58,8 @@ export default function Dashboard() {
     const storedFarmId = localStorage.getItem("farm_id");
     if (storedFarmId) {
       setIsLoggedIn(true);
-      // Only load data if we have an ID
-      // loadData is called in the next effect, or we can trigger here?
-      // Let's rely on the location effect, but we need to make sure logic flows.
     }
+    setIsAuthChecking(false);
   }, []);
 
   // Strategy 2: Check for saved location or show setup modal on first visit
@@ -90,7 +90,7 @@ export default function Dashboard() {
       console.warn('localStorage unavailable, using default location', error);
       loadData();
     }
-  }, []);
+  }, [isLoggedIn]);
 
   async function loadData(cityName?: string, lat?: number, lon?: number, countryCode?: string) {
     setLoading(true);
@@ -306,6 +306,79 @@ export default function Dashboard() {
     loadData();
   };
 
+  // --- RENDER LOGIC ---
+
+  // 1. Auth Check (Splash)
+  if (isAuthChecking) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center bg-slate-900 text-slate-500">
+        <div className="animate-pulse flex flex-col items-center">
+          <span className="text-4xl mb-4">🌱</span>
+          <p>Initializing System...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 2. Login Screen (if not logged in)
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white">
+        <div className="max-w-md w-full text-center space-y-8">
+          <div>
+            <div className="mx-auto w-16 h-16 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-6">
+              <span className="text-3xl">🌱</span>
+            </div>
+            <h1 className="text-4xl font-extrabold tracking-tight">Smart Farm AI</h1>
+            <p className="mt-2 text-slate-400">Autonomous Agricultural Intelligence</p>
+          </div>
+
+          <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 backdrop-blur-sm">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2 text-left">
+                  Access Code / Farm ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter Farm ID or create new..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                  value={loginFarmId}
+                  onChange={(e) => setLoginFarmId(e.target.value)}
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  const idToUse = loginFarmId.trim() || `farm_${Math.random().toString(36).substr(2, 9)}`;
+                  localStorage.setItem("farm_id", idToUse);
+                  setIsLoggedIn(true);
+                  // Force reload of location/data logic is tricky with useEffect deps, 
+                  // so we might want to manually call loadData here or reload page.
+                  window.location.reload();
+                }}
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20 transition-all active:scale-95"
+              >
+                {loginFarmId.trim() ? "System Login" : "Initialize New Farm"}
+              </button>
+
+              {!loginFarmId.trim() && (
+                <p className="text-xs text-slate-500">
+                  * Leave blank to create a secure random ID
+                </p>
+              )}
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600">
+            © 2025 ForHuman AI. Standard Data Rates Apply.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Loading Data (Authenticated but fetching)
   if (loading) {
     return (
       <div className="flex flex-col h-[50vh] items-center justify-center text-slate-400">
@@ -319,6 +392,7 @@ export default function Dashboard() {
     );
   }
 
+  // 4. Error State
   if (!data) {
     return (
       <div className="flex flex-col h-[50vh] items-center justify-center text-slate-400">
@@ -346,8 +420,6 @@ export default function Dashboard() {
   );
 
   const vpdSignal = getVPDSignal(data.indoor.vpd, selectedCropId);
-
-  // --- LOGIN SCREEN ---
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white">

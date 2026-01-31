@@ -29,6 +29,20 @@ export interface DashboardData {
             options: string[];
         };
     };
+
+}
+
+function getAuthHeaders() {
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json"
+    };
+    if (typeof window !== 'undefined') {
+        const farmId = localStorage.getItem("farm_id");
+        if (farmId) {
+            headers["X-Farm-ID"] = farmId;
+        }
+    }
+    return headers;
 }
 
 export async function fetchDashboardData(
@@ -48,8 +62,9 @@ export async function fetchDashboardData(
     }
 
     const res = await fetch(url, {
+        headers: getAuthHeaders(),
         cache: "no-store",
-        next: { revalidate: 0 } // Additional guarantee: Next.js 15+ compatible
+        next: { revalidate: 0 }
     });
     if (!res.ok) {
         throw new Error("Failed to fetch dashboard data");
@@ -78,6 +93,7 @@ export async function fetchAIAnalysis(
     }
 
     const res = await fetch(`${API_BASE_url}/ai/analyze?${params}`, {
+        headers: getAuthHeaders(),
         cache: "no-store",
         next: { revalidate: 0 }
     });
@@ -90,7 +106,7 @@ export async function fetchAIAnalysis(
 export async function calibrateSensors(actualTemp: number, weatherData: any) {
     const res = await fetch(`${API_BASE_url}/sensors/calibrate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
             actual_temp: actualTemp,
             weather: weatherData
@@ -105,8 +121,13 @@ export async function uploadImageForDiagnosis(file: File) {
     const formData = new FormData();
     formData.append("file", file);
 
+    // FormData headers are special, let browser handle Content-Type boundary
+    const headers: any = getAuthHeaders();
+    delete headers["Content-Type"]; // Remove application/json
+
     const res = await fetch(`${API_BASE_url}/ai/diagnose`, {
         method: "POST",
+        headers: headers,
         body: formData,
         cache: "no-store"
     });
@@ -124,6 +145,7 @@ export async function fetchPestForecast(crop: string, lat: number, lon: number) 
         lon: lon.toString()
     });
     const res = await fetch(`${API_BASE_url}/pest/forecast?${params}`, {
+        headers: getAuthHeaders(),
         cache: "no-store",
         next: { revalidate: 0 }
     });
@@ -152,7 +174,7 @@ export async function fetchUserProfile() {
 export async function updateUserTerms(agreed: boolean) {
     const res = await fetch(`${API_BASE_url}/users/me/terms`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ agreed }),
         cache: "no-store"
     });
@@ -163,7 +185,7 @@ export async function updateUserTerms(agreed: boolean) {
 export async function recordSensorData(data: any) {
     const res = await fetch(`${API_BASE_url}/sensors/record`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
         cache: "no-store"
     });
@@ -173,6 +195,7 @@ export async function recordSensorData(data: any) {
 
 export async function fetchWeeklyReport() {
     const res = await fetch(`${API_BASE_url}/reports/weekly`, {
+        headers: getAuthHeaders(),
         cache: "no-store",
         next: { revalidate: 0 }
     });

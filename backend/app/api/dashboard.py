@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header, Depends
 from app.services.data_handler import fetch_weather_data, get_coordinates_from_city, calculate_vpd
 from app.services.ai_engine import analyze_situation
 import sqlite3
@@ -17,9 +17,10 @@ async def get_dashboard_data(
     lon: float = None,
     country: str = None,  # ISO country code (e.g., 'US', 'GB', 'KR')
     crop_type: str = "Strawberries",
-    user_id: str = "test_user_001"
+    x_farm_id: str = Header(..., alias="X-Farm-ID")
 ):
     try:
+        user_id = x_farm_id # Map header to internal user_id logic
         location_name = city or "Unknown Location"
         
         found_country_code = None

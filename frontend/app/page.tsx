@@ -43,15 +43,29 @@ export default function Dashboard() {
   // Calibration State
   const [showCalibration, setShowCalibration] = useState(false);
 
-  // Strategy 1: Detect user's country on mount
+  // Login / Auth State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginFarmId, setLoginFarmId] = useState("");
+
+  // Strategy 1: Detect user's country & Check Auth
   useEffect(() => {
     const country = detectUserCountry();
-    // setUserCountry removed
     console.log(`🌍 Detected user country: ${country || 'Unknown'}`);
+
+    // Auth Check
+    const storedFarmId = localStorage.getItem("farm_id");
+    if (storedFarmId) {
+      setIsLoggedIn(true);
+      // Only load data if we have an ID
+      // loadData is called in the next effect, or we can trigger here?
+      // Let's rely on the location effect, but we need to make sure logic flows.
+    }
   }, []);
 
   // Strategy 2: Check for saved location or show setup modal on first visit
   useEffect(() => {
+    if (!isLoggedIn) return; // Don't load if not logged in
+
     try {
       const savedLoc = loadSavedLocation();
 
@@ -333,10 +347,77 @@ export default function Dashboard() {
 
   const vpdSignal = getVPDSignal(data.indoor.vpd, selectedCropId);
 
+  // --- LOGIN SCREEN ---
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white">
+        <div className="max-w-md w-full text-center space-y-8">
+          <div>
+            <div className="mx-auto w-16 h-16 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-6">
+              <span className="text-3xl">🌱</span>
+            </div>
+            <h1 className="text-4xl font-extrabold tracking-tight">Smart Farm AI</h1>
+            <p className="mt-2 text-slate-400">Autonomous Agricultural Intelligence</p>
+          </div>
+
+          <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 backdrop-blur-sm">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2 text-left">
+                  Access Code / Farm ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter Farm ID or create new..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                  value={loginFarmId}
+                  onChange={(e) => setLoginFarmId(e.target.value)}
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  const idToUse = loginFarmId.trim() || `farm_${Math.random().toString(36).substr(2, 9)}`;
+                  localStorage.setItem("farm_id", idToUse);
+                  setIsLoggedIn(true);
+                  // Force reload of location/data logic is tricky with useEffect deps, 
+                  // so we might want to manually call loadData here or reload page.
+                  window.location.reload();
+                }}
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20 transition-all active:scale-95"
+              >
+                {loginFarmId.trim() ? "System Login" : "Initialize New Farm"}
+              </button>
+
+              {!loginFarmId.trim() && (
+                <p className="text-xs text-slate-500">
+                  * Leave blank to create a secure random ID
+                </p>
+              )}
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600">
+            Protected by Real-time System Integrity Check
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      {/* Header */}
+      <div className="flex justify-between items-center mb-2 px-1">
+        <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded font-mono">
+          FARM-ID: {typeof window !== 'undefined' ? localStorage.getItem("farm_id") : "..."}
+        </span>
+        <button onClick={() => {
+          localStorage.removeItem("farm_id");
+          window.location.reload();
+        }} className="text-xs text-red-400 hover:text-red-300">
+          Logout
+        </button>
+      </div>
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">

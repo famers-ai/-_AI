@@ -1,4 +1,19 @@
 const API_BASE_url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+console.log(`🔌 API Endpoint: ${API_BASE_url}`);
+
+async function fetchWithTimeout(resource: RequestInfo, options: RequestInit = {}) {
+    const { timeout = 15000 } = options as any; // 15s default
+
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    const response = await fetch(resource, {
+        ...options,
+        signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+}
 
 export interface DashboardData {
     location: {
@@ -61,10 +76,11 @@ export async function fetchDashboardData(
         if (country) url += `&country=${country}`;
     }
 
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
         headers: getAuthHeaders(),
         cache: "no-store",
-        next: { revalidate: 0 }
+        next: { revalidate: 0 },
+        timeout: 20000 // 20s for dashboard (due to wake up)
     });
     if (!res.ok) {
         throw new Error("Failed to fetch dashboard data");

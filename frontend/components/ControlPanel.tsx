@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Droplets, Wind, ThermometerSun, Radio, FileText } from "lucide-react";
+import { Droplets, Wind, ThermometerSun, Radio, FileText, ToggleLeft, ToggleRight, HelpCircle } from "lucide-react";
 
 interface ControlPanelProps {
     currentIndoor: any;
@@ -39,21 +39,32 @@ export default function ControlPanel({ currentIndoor, onUpdateState, onGenerateR
 
     return (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 h-full flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                    <Radio className="text-red-500 animate-pulse" size={18} />
-                    Live Control
-                </h3>
-                <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-500 font-mono">
-                    MANUAL OVERRIDE
-                </span>
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                        <Radio className="text-red-500 animate-pulse" size={20} />
+                        Farm Control
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">Directly managing 3 actuators</p>
+                </div>
+
+                <div className="flex flex-col items-end">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Auto Mode</span>
+                        <ToggleLeft className="text-slate-300 cursor-not-allowed" size={24} />
+                    </div>
+                    <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold tracking-wide border border-red-200">
+                        MANUAL OVERRIDE
+                    </span>
+                </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-4 mb-6">
                 <ControlButton
                     icon={<Droplets size={24} />}
                     label="Irrigate"
                     color="bg-blue-500"
+                    activeColor="ring-blue-300"
                     onClick={() => performAction('irrigate')}
                     loading={loadingAction === 'irrigate'}
                 />
@@ -61,6 +72,7 @@ export default function ControlPanel({ currentIndoor, onUpdateState, onGenerateR
                     icon={<Wind size={24} />}
                     label="Ventilate"
                     color="bg-emerald-500"
+                    activeColor="ring-emerald-300"
                     onClick={() => performAction('ventilate')}
                     loading={loadingAction === 'ventilate'}
                 />
@@ -68,6 +80,7 @@ export default function ControlPanel({ currentIndoor, onUpdateState, onGenerateR
                     icon={<ThermometerSun size={24} />}
                     label="Heater"
                     color="bg-orange-500"
+                    activeColor="ring-orange-300"
                     onClick={() => performAction('warm')}
                     loading={loadingAction === 'warm'}
                 />
@@ -92,12 +105,12 @@ export default function ControlPanel({ currentIndoor, onUpdateState, onGenerateR
     );
 }
 
-function ControlButton({ icon, label, color, onClick, loading }: any) {
+function ControlButton({ icon, label, color, activeColor, onClick, loading }: any) {
     return (
         <button
             onClick={onClick}
             disabled={loading}
-            className={`flex flex-col items-center justify-center p-4 rounded-xl text-white transition-all active:scale-95 hover:shadow-lg ${color} ${loading ? 'opacity-70 scale-95' : ''}`}
+            className={`flex flex-col items-center justify-center p-4 rounded-xl text-white transition-all active:scale-95 hover:scale-105 shadow-md hover:shadow-xl focus:ring-4 ${activeColor} ${color} ${loading ? 'opacity-80 scale-95 ring-2' : ''}`}
         >
             <div className={loading ? 'animate-bounce' : ''}>
                 {icon}

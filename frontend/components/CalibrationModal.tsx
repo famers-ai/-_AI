@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Thermometer, CheckCircle2 } from "lucide-react";
+import { X, Thermometer, CheckCircle2, Info } from "lucide-react";
 
 interface CalibrationModalProps {
     onClose: () => void;
@@ -34,9 +34,13 @@ export default function CalibrationModal({ onClose, onSubmit, currentEst }: Cali
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6">
-                    <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-                        Help the AI learn! If the estimated temperature (<span className="font-bold text-slate-800">{currentEst}°F</span>) is wrong, please enter the <span className="underline decoration-purple-400 decoration-2">REAL</span> temperature below.
-                    </p>
+                    <div className="mb-6 p-3 bg-blue-50 border border-blue-100 rounded-lg flex items-start gap-3">
+                        <Info className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-blue-700 leading-snug">
+                            <span className="font-bold block text-blue-800 mb-1">Help the Physics Engine</span>
+                            Your input trains our model completely. If the estimated <span className="font-bold">{currentEst}°F</span> is incorrect, please enter the <span className="underline decoration-blue-300">real thermometer reading</span> below.
+                        </p>
+                    </div>
 
                     <div className="space-y-4">
                         <div>

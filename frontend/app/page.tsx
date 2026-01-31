@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchDashboardData, fetchAIAnalysis, fetchUserProfile, calibrateSensors, uploadImageForDiagnosis, type DashboardData } from "@/lib/api";
-import { Loader2, RefreshCw, PlusCircle, AlertTriangle, Settings2, Camera } from "lucide-react";
+import { Loader2, RefreshCw, PlusCircle, AlertTriangle, Settings2, Camera, HelpCircle } from "lucide-react";
 import clsx from "clsx";
 import TermsAgreementModal from "@/components/TermsAgreementModal";
 import DataInputModal from "@/components/DataInputModal";
@@ -443,24 +443,31 @@ export default function Dashboard() {
       </div>
 
       {/* Today's Farm Condition Banner */}
+      {/* Today's Farm Condition Banner */}
       <div className={clsx(
-        "p-4 md:p-6 rounded-2xl border-2 shadow-sm transition-all",
+        "p-5 md:p-6 rounded-3xl border shadow-sm transition-all flex flex-col md:flex-row md:items-center gap-4 relative overflow-hidden",
         farmCondition.bgColor,
         farmCondition.borderColor
       )}>
-        <div className="flex items-center gap-3">
-          <div className="text-4xl md:text-5xl">{farmCondition.emoji}</div>
-          <div className="flex-1">
-            <h3 className={clsx("text-lg md:text-xl font-bold", farmCondition.color)}>
-              {farmCondition.message}
-            </h3>
-            <p className="text-sm text-slate-600 mt-1">
-              Indoor VPD: {vpdSignal.emoji} {
-                data.indoor.vpd !== null && data.indoor.vpd !== undefined && !isNaN(data.indoor.vpd)
-                  ? `${data.indoor.vpd.toFixed(2)} kPa`
-                  : 'Measuring...'
-              } - {vpdSignal.message}
-            </p>
+        {/* Decorative Background Blur */}
+        <div className={clsx("absolute -right-10 -top-10 w-40 h-40 rounded-full opacity-20 blur-3xl", farmCondition.color.replace('text-', 'bg-'))}></div>
+
+        <div className="flex-shrink-0 bg-white/60 backdrop-blur-sm p-3 rounded-2xl shadow-sm border border-white/50">
+          <span className="text-4xl md:text-5xl">{farmCondition.emoji}</span>
+        </div>
+
+        <div className="flex-1 z-10">
+          <h3 className={clsx("text-xl md:text-2xl font-bold tracking-tight", farmCondition.color)}>
+            {farmCondition.message}
+          </h3>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
+            <span className="text-sm text-slate-600 font-medium flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+              VPD Status: {vpdSignal.emoji} <span className="text-slate-900 font-bold">{data.indoor.vpd?.toFixed(2)} kPa</span>
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-white/50 border border-slate-200 text-slate-500 font-medium">
+              {vpdSignal.message}
+            </span>
           </div>
         </div>
       </div>
@@ -477,7 +484,15 @@ export default function Dashboard() {
             <div className="metric-card bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Indoor Environment</p>
+                  <div className="flex items-center gap-1 mb-2">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Indoor Microclimate</p>
+                    <div className="group relative">
+                      <HelpCircle size={12} className="text-slate-300 hover:text-slate-400 cursor-help" />
+                      <div className="absolute left-0 bottom-full mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded shadow-xl hidden group-hover:block z-50">
+                        VPD (Vapor Pressure Deficit) measures the drying power of the air. Key for plant growth.
+                      </div>
+                    </div>
+                  </div>
                   <h3 className="text-3xl font-bold text-slate-800 mt-2">
                     {data.indoor.vpd ?? "--"} <span className="text-sm font-normal text-slate-400">kPa</span>
                   </h3>

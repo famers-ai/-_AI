@@ -308,7 +308,7 @@ def analyze_pest_risk_with_ai(weather_forecast, crop_type):
 def analyze_market_prices_with_ai(crop_type):
     # REVERTED TO GEMINI
     api_key = get_api_key()
-    if not api_key: return generate_fallback_market_data()
+    if not api_key: return []
 
     try:
         genai.configure(api_key=api_key)
@@ -345,23 +345,9 @@ def analyze_market_prices_with_ai(crop_type):
             return []
     except Exception as e:
         print(f"AI Market General Error: {e}")
-        return generate_fallback_market_data()
+        return []
 
-def generate_fallback_market_data():
-    from datetime import datetime, timedelta
-    import random
-    
-    data = []
-    base_price = 2.50
-    today = datetime.now()
-    
-    for i in range(7):
-        date = (today - timedelta(days=6-i)).strftime("%Y-%m-%d")
-        # Random fluctuation +/- 5%
-        fluctuation = base_price * (random.uniform(-0.05, 0.05))
-        price = round(base_price + fluctuation, 2)
-        data.append({
-            "Date": date,
-            "Price ($/lb)": price
-        })
-    return data
+# Removed generate_fallback_market_data to ensure 100% Real/AI Data only.
+# No mock data allowed per user request.
+
+

@@ -16,6 +16,8 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 
 // ... (existing imports)
 
+import { Providers } from "@/components/Providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,17 +26,19 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-slate-50 text-slate-900 antialiased`}>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative">
-            <div className="max-w-7xl mx-auto">
-              <Header />
-              <ErrorBoundary>
-                {children}
-              </ErrorBoundary>
-            </div>
-          </main>
-        </div>
+        <Providers>
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative">
+              <div className="max-w-7xl mx-auto">
+                <Header />
+                <ErrorBoundary>
+                  {children}
+                </ErrorBoundary>
+              </div>
+            </main>
+          </div>
+        </Providers>
       </body>
     </html>
   );

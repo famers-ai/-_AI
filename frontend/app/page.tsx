@@ -20,6 +20,7 @@ import {
   isFirstVisit,
   type SavedLocation
 } from "@/lib/location";
+import { useSession } from "next-auth/react";
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -48,19 +49,35 @@ export default function Dashboard() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginFarmId, setLoginFarmId] = useState("");
 
+  const { data: session, status } = useSession();
+
 
   // Strategy 1: Detect user's country & Check Auth
   useEffect(() => {
     const country = detectUserCountry();
     console.log(`🌍 Detected user country: ${country || 'Unknown'}`);
 
-    // Auth Check
+    // Auth Check (Manual or Google)
     const storedFarmId = localStorage.getItem("farm_id");
-    if (storedFarmId) {
+
+    if (status === "authenticated" && session?.user?.email) {
+      // GOOGLE AUTH LOGIN
+      const googleFarmId = session.user.email;
+      if (storedFarmId !== googleFarmId) {
+        localStorage.setItem("farm_id", googleFarmId);
+      }
       setIsLoggedIn(true);
+      setIsAuthChecking(false);
+    } else if (storedFarmId) {
+      // MANUAL AUTH LOGIN
+      setIsLoggedIn(true);
+      setIsAuthChecking(false);
+    } else if (status === "unauthenticated") {
+      setIsAuthChecking(false);
     }
-    setIsAuthChecking(false);
-  }, []);
+    // If status is "loading", we wait.
+
+  }, [status, session]);
 
   // Strategy 2: Check for saved location or show setup modal on first visit
   useEffect(() => {

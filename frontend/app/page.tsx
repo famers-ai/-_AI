@@ -20,7 +20,7 @@ import {
   isFirstVisit,
   type SavedLocation
 } from "@/lib/location";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -351,39 +351,48 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 backdrop-blur-sm">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2 text-left">
-                  Access Code / Farm ID
-                </label>
+            <div className="space-y-6">
+
+              {/* Primary: Google Login */}
+              <button
+                onClick={() => signIn("google")}
+                className="w-full py-3.5 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3"
+              >
+                <img src="https://authjs.dev/img/providers/google.svg" alt="Google" className="w-5 h-5" />
+                Sign in with Google
+              </button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-600" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-slate-800 px-2 text-slate-500">Or use Farm ID</span>
+                </div>
+              </div>
+
+              {/* Secondary: Manual ID */}
+              <div className="space-y-3">
                 <input
                   type="text"
-                  placeholder="Enter Farm ID or create new..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                  placeholder="Enter Farm ID..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all text-center"
                   value={loginFarmId}
                   onChange={(e) => setLoginFarmId(e.target.value)}
                 />
+                <button
+                  onClick={() => {
+                    const idToUse = loginFarmId.trim() || `farm_${Math.random().toString(36).substr(2, 9)}`;
+                    localStorage.setItem("farm_id", idToUse);
+                    setIsLoggedIn(true);
+                    window.location.reload();
+                  }}
+                  className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold rounded-xl transition-all active:scale-95 text-sm"
+                >
+                  {loginFarmId.trim() ? "Access with ID" : "Create Private Guest ID"}
+                </button>
               </div>
 
-              <button
-                onClick={() => {
-                  const idToUse = loginFarmId.trim() || `farm_${Math.random().toString(36).substr(2, 9)}`;
-                  localStorage.setItem("farm_id", idToUse);
-                  setIsLoggedIn(true);
-                  // Force reload of location/data logic is tricky with useEffect deps, 
-                  // so we might want to manually call loadData here or reload page.
-                  window.location.reload();
-                }}
-                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20 transition-all active:scale-95"
-              >
-                {loginFarmId.trim() ? "System Login" : "Initialize New Farm"}
-              </button>
-
-              {!loginFarmId.trim() && (
-                <p className="text-xs text-slate-500">
-                  * Leave blank to create a secure random ID
-                </p>
-              )}
             </div>
           </div>
 

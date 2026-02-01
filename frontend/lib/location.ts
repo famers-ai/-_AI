@@ -3,6 +3,73 @@
  * Handles country detection and location persistence
  */
 
+// Geocoding cache to prevent redundant API calls
+interface GeocodeCache {
+    [key: string]: {
+        city: string;
+        region: string;
+        country: string;
+        timestamp: number;
+    };
+}
+
+const GEOCODE_CACHE_KEY = 'smartfarm_geocode_cache';
+const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Get cached geocoding result
+ */
+function getCachedGeocode(lat: number, lon: number): { city: string; region: string; country: string } | null {
+    try {
+        const cacheStr = localStorage.getItem(GEOCODE_CACHE_KEY);
+        if (!cacheStr) return null;
+
+        const cache: GeocodeCache = JSON.parse(cacheStr);
+        const key = `${lat.toFixed(2)},${lon.toFixed(2)}`; // Round to 2 decimals for cache key
+        const cached = cache[key];
+
+        if (cached && Date.now() - cached.timestamp < CACHE_EXPIRY_MS) {
+            console.log('📍 Using cached geocode result for', key);
+            return { city: cached.city, region: cached.region, country: cached.country };
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error reading geocode cache:', error);
+        return null;
+    }
+}
+
+/**
+ * Save geocoding result to cache
+ */
+function setCachedGeocode(lat: number, lon: number, city: string, region: string, country: string): void {
+    try {
+        const cacheStr = localStorage.getItem(GEOCODE_CACHE_KEY);
+        const cache: GeocodeCache = cacheStr ? JSON.parse(cacheStr) : {};
+
+        const key = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+        cache[key] = { city, region, country, timestamp: Date.now() };
+
+        // Clean up old entries (keep only last 10)
+        const entries = Object.entries(cache);
+        if (entries.length > 10) {
+            const sorted = entries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+            const newCache: GeocodeCache = {};
+            sorted.slice(0, 10).forEach(([k, v]) => newCache[k] = v);
+            localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(newCache));
+        } else {
+            localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(cache));
+        }
+
+        console.log('📍 Cached geocode result for', key);
+    } catch (error) {
+        console.error('Error saving geocode cache:', error);
+    }
+}
+
+export { getCachedGeocode, setCachedGeocode };
+
 /**
  * Detect user's country from browser language
  * Returns ISO country code (e.g., 'US', 'GB', 'KR')

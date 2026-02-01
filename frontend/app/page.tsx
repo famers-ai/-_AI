@@ -130,6 +130,24 @@ export default function Dashboard() {
     }
   }, [isLoggedIn]);
 
+  // Listen for location updates from LocationDisplay component
+  useEffect(() => {
+    const handleLocationUpdate = (event: CustomEvent) => {
+      const newLocation = event.detail;
+      console.log('📍 Location updated, refreshing dashboard...', newLocation);
+
+      // Reload dashboard data with new location
+      if (newLocation.city) {
+        loadData(newLocation.city, undefined, undefined, newLocation.country);
+      }
+    };
+
+    window.addEventListener('locationUpdated', handleLocationUpdate as EventListener);
+    return () => {
+      window.removeEventListener('locationUpdated', handleLocationUpdate as EventListener);
+    };
+  }, []);
+
   async function loadData(cityName?: string, lat?: number, lon?: number, countryCode?: string) {
     setLoading(true);
     setLoadingElapsed(0); // Reset timer

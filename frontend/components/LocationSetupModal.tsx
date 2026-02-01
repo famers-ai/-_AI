@@ -28,6 +28,7 @@ export default function LocationSetupModal({ isOpen, onLocationSet, onSkip }: Lo
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
+                console.log(`📍 GPS location obtained: ${latitude}, ${longitude}`);
                 onLocationSet(undefined, latitude, longitude);
                 setIsGettingLocation(false);
             },
@@ -35,12 +36,22 @@ export default function LocationSetupModal({ isOpen, onLocationSet, onSkip }: Lo
                 console.error("Geolocation error:", err);
                 setIsGettingLocation(false);
                 let msg = "Unable to retrieve your location";
-                if (err.code === 1) msg = "Access denied. Please enable location permissions.";
-                else if (err.code === 2) msg = "Location unavailable";
-                else if (err.code === 3) msg = "Location request timed out";
+
+                if (err.code === 1) {
+                    msg = "Location access denied. Please enable location permissions in your browser settings and try again.";
+                } else if (err.code === 2) {
+                    msg = "Location unavailable. Please check your device's location services.";
+                } else if (err.code === 3) {
+                    msg = "Location request timed out. Please try again or enter your city manually.";
+                }
+
                 setError(msg);
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            {
+                enableHighAccuracy: true,
+                timeout: 15000, // Increased to 15s for better reliability
+                maximumAge: 0
+            }
         );
     };
 

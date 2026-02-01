@@ -98,7 +98,7 @@ export async function fetchDashboardData(
         cache: "no-store",
         next: { revalidate: 0 },
         timeout: 20000 // 20s for dashboard (due to wake up)
-    });
+    } as any);
     if (!res.ok) {
         throw new Error("Failed to fetch dashboard data");
     }

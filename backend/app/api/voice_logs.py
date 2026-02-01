@@ -35,9 +35,19 @@ class VoiceLogResponse(BaseModel):
     parsedData: Optional[ParsedData] = None
     timestamp: datetime
 
-# Helper to emulate auth
-def get_current_user_id():
-    return "test_user_001"
+from fastapi import Header
+
+# CRITICAL: Get user_id from X-Farm-ID header to prevent data mixing
+def get_current_user_id(
+    x_farm_id: str = Header(..., alias="X-Farm-ID")
+):
+    """
+    Get current user ID from X-Farm-ID header.
+    This ensures all voice logs are isolated per user.
+    """
+    if not x_farm_id:
+        raise HTTPException(status_code=400, detail="Missing X-Farm-ID header")
+    return x_farm_id
 
 @router.post("/", response_model=VoiceLogResponse)
 async def create_log(log: VoiceLogCreate, user_id: str = Depends(get_current_user_id)):

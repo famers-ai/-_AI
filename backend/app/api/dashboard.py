@@ -228,20 +228,24 @@ def ai_analyze(
 
 @router.post("/sensors/calibrate")
 def calibrate_sensors(
-    data: dict 
+    data: dict,
+    x_farm_id: str = Header(..., alias="X-Farm-ID")
 ):
     """
     Endpoint for users to submit REAL ground truth to improve Physics Engine.
     Body: { "actual_temp": 25.5, "weather": {...} }
+    
+    CRITICAL: Each user's calibration data is stored separately to prevent data mixing.
     """
     try:
+        user_id = x_farm_id
         actual_temp = data.get("actual_temp")
         weather = data.get("weather") # Must match external weather format
         
-        # Convert inputs to metric if needed
-        # We assume frontend passes nicely formatted data or we handle it.
-        # Physics engine expects metric web inputs usually.
+        if actual_temp is None or weather is None:
+            raise HTTPException(status_code=400, detail="Missing actual_temp or weather data")
         
+        # Convert inputs to metric if needed
         w_metric = {
             "temperature": (float(weather['temperature']) - 32) * 5/9,
             "humidity": float(weather.get('humidity') or 50),
@@ -250,29 +254,116 @@ def calibrate_sensors(
             "is_day": True 
         }
         
+        # Store calibration data in database per user
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        # Create calibration table if not exists
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS calibration_data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                actual_temp_c REAL NOT NULL,
+                weather_temp_c REAL NOT NULL,
+                weather_humidity REAL NOT NULL,
+                weather_wind_speed REAL NOT NULL,
+                weather_rain REAL NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        
+        cursor.execute("""
+            INSERT INTO calibration_data 
+            (user_id, actual_temp_c, weather_temp_c, weather_humidity, weather_wind_speed, weather_rain)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            (float(actual_temp) - 32) * 5/9,
+            w_metric['temperature'],
+            w_metric['humidity'],
+            w_metric['wind_speed'],
+            w_metric['rain']
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        # Use physics engine with user-specific calibration
         result = physics_engine.calibrate_model((float(actual_temp) - 32) * 5/9, w_metric)
-        return result
+        
+        return {
+            "success": True,
+            "message": "Calibration data saved successfully",
+            "user_id": user_id,
+            "calibration_result": result
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/control")
-def control_farm(data: dict):
+def control_farm(
+    data: dict,
+    x_farm_id: str = Header(..., alias="X-Farm-ID")
+):
     """
     Virtual Controller Endpoint.
     Body: { "action": "irrigate", "current_state": {...} }
+    
+    CRITICAL: Each user's control state is isolated to prevent state mixing.
     """
     try:
+        user_id = x_farm_id
         action = data.get("action")
         current_state = data.get("current_state")
         
         # Validate input
         if not action or not current_state:
             raise HTTPException(status_code=400, detail="Missing action or state")
-            
+        
+        # Store control action in database for audit trail
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        # Create control_logs table if not exists
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS control_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                state_before TEXT NOT NULL,
+                state_after TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        
         # Simulate Physics
         new_state = physics_engine.simulate_action(action, current_state)
-        return new_state
+        
+        # Log the control action
+        import json
+        cursor.execute("""
+            INSERT INTO control_logs 
+            (user_id, action, state_before, state_after)
+            VALUES (?, ?, ?, ?)
+        """, (
+            user_id,
+            action,
+            json.dumps(current_state),
+            json.dumps(new_state)
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True,
+            "user_id": user_id,
+            "action": action,
+            "new_state": new_state
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

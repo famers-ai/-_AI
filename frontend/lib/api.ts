@@ -7,12 +7,29 @@ async function fetchWithTimeout(resource: RequestInfo, options: RequestInit = {}
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
 
-    const response = await fetch(resource, {
-        ...options,
-        signal: controller.signal
-    });
-    clearTimeout(id);
-    return response;
+    try {
+        const response = await fetch(resource, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+
+        // CRITICAL: Handle 401 Unauthorized - session expired
+        if (response.status === 401) {
+            console.error("🚨 Session expired - clearing localStorage and redirecting to login");
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem("farm_id");
+                // Redirect to login page
+                window.location.href = "/";
+            }
+            throw new Error("Session expired. Please log in again.");
+        }
+
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
 }
 
 export interface DashboardData {

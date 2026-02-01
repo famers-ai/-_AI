@@ -3,7 +3,7 @@ Location Service API
 Provides location-based services with privacy and security in mind
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel
 from datetime import datetime
 import sqlite3
@@ -22,10 +22,17 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-# TODO: Implement proper authentication
-def get_current_user_id(user_id: str = "test_user_001"):
-    """Get current user ID (placeholder for auth)"""
-    return user_id
+# CRITICAL: Get user_id from X-Farm-ID header to prevent data mixing
+def get_current_user_id(
+    x_farm_id: str = Header(..., alias="X-Farm-ID")
+):
+    """
+    Get current user ID from X-Farm-ID header.
+    This ensures all location data is isolated per user.
+    """
+    if not x_farm_id:
+        raise HTTPException(status_code=400, detail="Missing X-Farm-ID header")
+    return x_farm_id
 
 class LocationData(BaseModel):
     """Location data model - city level only for privacy"""

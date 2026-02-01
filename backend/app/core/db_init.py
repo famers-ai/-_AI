@@ -26,6 +26,9 @@ def init_real_data_schema():
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         
+        # CRITICAL: Enable foreign key constraints for data integrity
+        cursor.execute("PRAGMA foreign_keys = ON")
+        
         # 1. Users table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (

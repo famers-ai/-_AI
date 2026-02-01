@@ -232,19 +232,35 @@ def generate_weekly_report(crop_type, user_id):
     except Exception as e:
         return f"Error creating report: {e}"
 
-def analyze_crop_image(image_data):
+def analyze_crop_image(image_data, user_id=None, crop_type=None):
+    """
+    Analyze crop image with AI, using diagnosis history for context
+    
+    Args:
+        image_data: PIL Image object
+        user_id: User identifier for history lookup
+        crop_type: Optional crop type hint
+    
+    Returns:
+        Diagnosis text with recommendations
+    """
     api_key = get_api_key()
     if not api_key:
         return "Error: API Key not found."
-        
+    
     try:
+        # Import diagnosis history service
+        from .diagnosis_history import (
+            get_diagnosis_context_for_ai, 
+            save_diagnosis
+        )
+        
         genai.configure(api_key=api_key)
-        # Verify vision support: gemini-1.5-pro supports images
         model_name = "gemini-1.5-pro"
-             
         model = genai.GenerativeModel(model_name)
         
-        prompt = """
+        # Build context-aware prompt
+        base_prompt = """
         IMPORTANT LEGAL & SAFETY CHECK:
         1. YOU ARE AN AI ASSISTANT, NOT A PLANT PATHOLOGIST.
         2. Identify the crop.
@@ -254,12 +270,77 @@ def analyze_crop_image(image_data):
         6. Always advise consulting a local expert.
 
         [DISCLAIMER]: This analysis is for informational purposes only.
+        
+        Analyze this crop image and provide:
+        - **Crop Type**: [Identified crop]
+        - **Symptoms Observed**: [List visible symptoms]
+        - **Severity**: [Normal / Warning / Critical]
+        - **Possible Causes**: [Potential diseases, pests, or environmental issues]
+        - **Recommendations**: [Cultural, mechanical, or biological controls]
+        - **Next Steps**: [What the farmer should do]
         """
-
-        # Ensure image_data is in correct format or passed correctly
-        # Assuming image_data is a PIL Image or appropriate blob from the caller
-        response = model.generate_content([prompt, image_data])
-        return response.text
+        
+        # Add diagnosis history context if available
+        if user_id:
+            history_context = get_diagnosis_context_for_ai(user_id, crop_type)
+            if history_context:
+                base_prompt += f"\n\n{history_context}"
+                base_prompt += "\nIMPORTANT: Check if current symptoms match or worsen previous issues."
+        
+        # Call Gemini Vision API
+        response = model.generate_content([base_prompt, image_data])
+        diagnosis_text = response.text
+        
+        # Extract structured information from diagnosis
+        severity = "Normal"
+        if "Critical" in diagnosis_text:
+            severity = "Critical"
+        elif "Warning" in diagnosis_text:
+            severity = "Warning"
+        
+        # Extract symptoms and recommendations (simple text extraction)
+        symptoms = None
+        recommendations = None
+        
+        if "**Symptoms Observed**:" in diagnosis_text:
+            try:
+                symptoms_section = diagnosis_text.split("**Symptoms Observed**:")[1]
+                symptoms = symptoms_section.split("**")[0].strip()[:500]  # Limit length
+            except:
+                pass
+        
+        if "**Recommendations**:" in diagnosis_text:
+            try:
+                rec_section = diagnosis_text.split("**Recommendations**:")[1]
+                recommendations = rec_section.split("**")[0].strip()[:500]
+            except:
+                pass
+        
+        # Extract crop type from diagnosis if not provided
+        if not crop_type and "**Crop Type**:" in diagnosis_text:
+            try:
+                crop_section = diagnosis_text.split("**Crop Type**:")[1]
+                crop_type = crop_section.split("**")[0].strip().split("\n")[0][:50]
+            except:
+                pass
+        
+        # Save diagnosis to history if user_id provided
+        if user_id:
+            try:
+                save_diagnosis(
+                    user_id=user_id,
+                    diagnosis_text=diagnosis_text,
+                    crop_type=crop_type,
+                    confidence_score=0.85,  # Default confidence for vision model
+                    symptoms=symptoms,
+                    recommendations=recommendations,
+                    severity=severity
+                )
+            except Exception as e:
+                print(f"Warning: Could not save diagnosis history: {e}")
+        
+        return diagnosis_text
+        
     except Exception as e:
         return f"Global API Error: {str(e)}"
 

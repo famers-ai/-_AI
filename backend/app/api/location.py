@@ -6,21 +6,12 @@ Provides location-based services with privacy and security in mind
 from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel
 from datetime import datetime
-import sqlite3
-import os
-import requests
+from sqlalchemy.orm import Session
 from typing import Optional
 
+from app.core.database import get_db, User
+
 router = APIRouter()
-
-# Database path
-from app.core.config import DB_NAME
-
-def get_db_connection():
-    """Get database connection"""
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 # CRITICAL: Get user_id from X-Farm-ID header to prevent data mixing
 def get_current_user_id(
@@ -56,7 +47,8 @@ class IPLocationResponse(BaseModel):
 @router.post("/set")
 async def set_user_location(
     location: LocationData,
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
 ):
     """
     Set user location (city-level only)
@@ -72,32 +64,18 @@ async def set_user_location(
         )
     
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        # Find user
+        user = db.query(User).filter(User.id == user_id).first()
         
-        # Update user location
-        cursor.execute("""
-            UPDATE users
-            SET location_city = ?,
-                location_region = ?,
-                location_country = ?,
-                location_consent = ?,
-                location_updated_at = ?
-            WHERE id = ?
-        """, (
-            location.city,
-            location.region,
-            location.country,
-            1,  # consent = True
-            datetime.now(),
-            user_id
-        ))
-        
-        if cursor.rowcount == 0:
+        if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        conn.commit()
-        conn.close()
+        # Update user location
+        user.location = location.city  # Using existing location field
+        # Note: location_region, location_country, location_consent, location_updated_at 
+        # are not in current schema. Using location field for city.
+        
+        db.commit()
         
         return {
             "success": True,
@@ -109,47 +87,47 @@ async def set_user_location(
             }
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to update location: {str(e)}")
 
 @router.get("/get")
-async def get_user_location(user_id: str = Depends(get_current_user_id)):
+async def get_user_location(
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """
     Get user's stored location
     
     Security: User can only access their own location
     """
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        user = db.query(User).filter(User.id == user_id).first()
         
-        cursor.execute("""
-            SELECT location_city, location_region, location_country,
-                   location_consent, location_updated_at
-            FROM users
-            WHERE id = ?
-        """, (user_id,))
-        
-        row = cursor.fetchone()
-        conn.close()
-        
-        if not row:
+        if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
         return {
-            "city": row["location_city"],
-            "region": row["location_region"],
-            "country": row["location_country"],
-            "consent": bool(row["location_consent"]),
-            "updated_at": row["location_updated_at"],
-            "has_location": row["location_city"] is not None
+            "city": user.location,
+            "region": None,  # Not in current schema
+            "country": None,  # Not in current schema
+            "consent": True,  # Not in current schema
+            "updated_at": None,  # Not in current schema
+            "has_location": user.location is not None
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get location: {str(e)}")
 
 @router.delete("/delete")
-async def delete_user_location(user_id: str = Depends(get_current_user_id)):
+async def delete_user_location(
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """
     Delete user's location data (GDPR Right to be Forgotten)
     
@@ -157,65 +135,50 @@ async def delete_user_location(user_id: str = Depends(get_current_user_id)):
     Security: User can only delete their own location
     """
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        user = db.query(User).filter(User.id == user_id).first()
         
-        cursor.execute("""
-            UPDATE users
-            SET location_city = NULL,
-                location_region = NULL,
-                location_country = NULL,
-                location_consent = 0,
-                location_updated_at = ?
-            WHERE id = ?
-        """, (datetime.now(), user_id))
-        
-        if cursor.rowcount == 0:
+        if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        conn.commit()
-        conn.close()
+        # Clear location
+        user.location = None
+        
+        db.commit()
         
         return {
             "success": True,
             "message": "Location data deleted successfully"
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete location: {str(e)}")
 
 @router.get("/weather")
-async def get_location_based_weather(user_id: str = Depends(get_current_user_id)):
+async def get_location_based_weather(
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """
     Get weather data based on user's stored location
     Falls back to IP-based detection if no location is stored
     """
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        user = db.query(User).filter(User.id == user_id).first()
         
-        cursor.execute("""
-            SELECT location_city, location_region, location_country
-            FROM users
-            WHERE id = ?
-        """, (user_id,))
-        
-        row = cursor.fetchone()
-        conn.close()
-        
-        if not row or not row["location_city"]:
+        if not user or not user.location:
             # No stored location, return 404 asking client to set location
             # Server-side IP detection was removed for privacy/accuracy
             raise HTTPException(
                 status_code=404, 
                 detail="Location not set. Please set your location to get weather data."
             )
-        else:
-            city = row["location_city"]
         
         # Return city for weather API
         return {
-            "city": city,
+            "city": user.location,
             "message": "Use this city for weather API calls"
         }
         

@@ -1,14 +1,16 @@
 
-from fastapi import APIRouter, HTTPException, Query
-import sqlite3
-import os
+from fastapi import APIRouter, HTTPException, Query, Depends
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db, User, SensorReading, PestForecast, PestIncident, CropDiagnosis, VoiceLog
 
 router = APIRouter()
 
-from app.core.config import DB_NAME
-
 @router.delete("/reset-data")
-async def reset_database(confirm: bool = Query(False, description="Set to true to confirm deletion")):
+async def reset_database(
+    confirm: bool = Query(False, description="Set to true to confirm deletion"),
+    db: Session = Depends(get_db)
+):
     """
     SAFE CLEANUP: Deletes ONLY test/sample data (test_user_001)
     Preserves all real user data from Google OAuth
@@ -17,35 +19,34 @@ async def reset_database(confirm: bool = Query(False, description="Set to true t
         raise HTTPException(status_code=400, detail="You must confirm deletion by setting confirm=true")
         
     try:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
         # Only delete test user data
         test_user_id = 'test_user_001'
+        test_email = 'test@forhumanai.net'
         
         # Clear test user's sensor readings
-        cursor.execute("DELETE FROM sensor_readings WHERE user_id = ?", (test_user_id,))
-        readings_count = cursor.rowcount
+        readings_count = db.query(SensorReading).filter(
+            SensorReading.user_id == test_user_id
+        ).delete()
         
         # Clear test user's pest forecasts
-        cursor.execute("DELETE FROM pest_forecasts WHERE user_id = ?", (test_user_id,))
-        forecasts_count = cursor.rowcount
+        forecasts_count = db.query(PestForecast).filter(
+            PestForecast.user_id == test_user_id
+        ).delete()
         
         # Clear test user's other data
-        cursor.execute("DELETE FROM pest_incidents WHERE user_id = ?", (test_user_id,))
-        cursor.execute("DELETE FROM crop_diagnoses WHERE user_id = ?", (test_user_id,))
-        cursor.execute("DELETE FROM voice_logs WHERE user_id = ?", (test_user_id,))
+        db.query(PestIncident).filter(PestIncident.user_id == test_user_id).delete()
+        db.query(CropDiagnosis).filter(CropDiagnosis.user_id == test_user_id).delete()
+        db.query(VoiceLog).filter(VoiceLog.user_id == test_user_id).delete()
         
         # Delete the test user itself
-        cursor.execute("DELETE FROM users WHERE id = ? OR email = ?", (test_user_id, 'test@forhumanai.net'))
-        user_deleted = cursor.rowcount
+        user_deleted = db.query(User).filter(
+            (User.id == test_user_id) | (User.email == test_email)
+        ).delete()
         
         # Count remaining real users
-        cursor.execute("SELECT COUNT(*) FROM users")
-        real_users = cursor.fetchone()[0]
+        real_users = db.query(User).count()
         
-        conn.commit()
-        conn.close()
+        db.commit()
         
         return {
             "success": True,
@@ -53,4 +54,5 @@ async def reset_database(confirm: bool = Query(False, description="Set to true t
         }
         
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to cleanup test data: {str(e)}")

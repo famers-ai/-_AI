@@ -1,11 +1,8 @@
 from fastapi import APIRouter, HTTPException, Header, Depends
+from sqlalchemy.orm import Session
 from app.services.data_handler import fetch_weather_data, get_coordinates_from_city, calculate_vpd
 from app.services.ai_engine import analyze_situation
-import sqlite3
-import os
-
-# Database path
-from app.core.config import DB_NAME
+from app.core.database import get_db, SensorReading
 from app.services.physics_engine import physics_engine
 
 router = APIRouter()
@@ -17,7 +14,8 @@ async def get_dashboard_data(
     lon: float = None,
     country: str = None,  # ISO country code (e.g., 'US', 'GB', 'KR')
     crop_type: str = "Strawberries",
-    x_farm_id: str = Header(..., alias="X-Farm-ID")
+    x_farm_id: str = Header(..., alias="X-Farm-ID"),
+    db: Session = Depends(get_db)
 ):
     try:
         user_id = x_farm_id # Map header to internal user_id logic
@@ -77,20 +75,9 @@ async def get_dashboard_data(
         
         # 2. Fetch User's Real Indoor Data (DB)
         # NO MORE SIMULATION. Only DB data.
-        conn = sqlite3.connect(DB_NAME)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT temperature, humidity, vpd, soil_moisture, timestamp 
-            FROM sensor_readings 
-            WHERE user_id = ? AND data_source = 'manual' 
-            ORDER BY timestamp DESC 
-            LIMIT 1
-        """, (user_id,))
-        
-        indoor_row = cursor.fetchone()
-        conn.close()
+        indoor_row = db.query(SensorReading).filter(
+            SensorReading.user_id == user_id
+        ).order_by(SensorReading.timestamp.desc()).first()
 
         # Default state if no data
         indoor_data = {
@@ -103,13 +90,16 @@ async def get_dashboard_data(
         }
 
         if indoor_row:
+            # Calculate VPD from temperature and humidity
+            vpd = calculate_vpd(indoor_row.temperature, indoor_row.humidity) if indoor_row.temperature and indoor_row.humidity else None
+            
             indoor_data = {
-                "temperature": indoor_row['temperature'],
-                "humidity": indoor_row['humidity'],
-                "vpd": indoor_row['vpd'],
-                "vpd_status": get_vpd_status(indoor_row['vpd']),
-                "soil_moisture": indoor_row['soil_moisture'],
-                "timestamp": indoor_row['timestamp']
+                "temperature": indoor_row.temperature,
+                "humidity": indoor_row.humidity,
+                "vpd": vpd,
+                "vpd_status": get_vpd_status(vpd),
+                "soil_moisture": indoor_row.soil_moisture,
+                "timestamp": indoor_row.timestamp.isoformat() if indoor_row.timestamp else None
             }
         else:
             # NO SENSOR DATA -> ACTIVATE VIRTUAL SENSOR (PHYSICS ENGINE)
@@ -229,13 +219,17 @@ def ai_analyze(
 @router.post("/sensors/calibrate")
 def calibrate_sensors(
     data: dict,
-    x_farm_id: str = Header(..., alias="X-Farm-ID")
+    x_farm_id: str = Header(..., alias="X-Farm-ID"),
+    db: Session = Depends(get_db)
 ):
     """
     Endpoint for users to submit REAL ground truth to improve Physics Engine.
     Body: { "actual_temp": 25.5, "weather": {...} }
     
     CRITICAL: Each user's calibration data is stored separately to prevent data mixing.
+    
+    Note: Calibration data storage is not yet implemented in PostgreSQL schema.
+    This endpoint will return success but not persist calibration data until schema is updated.
     """
     try:
         user_id = x_farm_id
@@ -254,47 +248,13 @@ def calibrate_sensors(
             "is_day": True 
         }
         
-        # Store calibration data in database per user
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        # Create calibration table if not exists
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS calibration_data (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                actual_temp_c REAL NOT NULL,
-                weather_temp_c REAL NOT NULL,
-                weather_humidity REAL NOT NULL,
-                weather_wind_speed REAL NOT NULL,
-                weather_rain REAL NOT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            )
-        """)
-        
-        cursor.execute("""
-            INSERT INTO calibration_data 
-            (user_id, actual_temp_c, weather_temp_c, weather_humidity, weather_wind_speed, weather_rain)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            user_id,
-            (float(actual_temp) - 32) * 5/9,
-            w_metric['temperature'],
-            w_metric['humidity'],
-            w_metric['wind_speed'],
-            w_metric['rain']
-        ))
-        
-        conn.commit()
-        conn.close()
-        
-        # Use physics engine with user-specific calibration
+        # TODO: Store calibration data in PostgreSQL when schema is updated
+        # For now, just use physics engine calibration
         result = physics_engine.calibrate_model((float(actual_temp) - 32) * 5/9, w_metric)
         
         return {
             "success": True,
-            "message": "Calibration data saved successfully",
+            "message": "Calibration processed (storage pending schema update)",
             "user_id": user_id,
             "calibration_result": result
         }
@@ -305,13 +265,17 @@ def calibrate_sensors(
 @router.post("/control")
 def control_farm(
     data: dict,
-    x_farm_id: str = Header(..., alias="X-Farm-ID")
+    x_farm_id: str = Header(..., alias="X-Farm-ID"),
+    db: Session = Depends(get_db)
 ):
     """
     Virtual Controller Endpoint.
     Body: { "action": "irrigate", "current_state": {...} }
     
     CRITICAL: Each user's control state is isolated to prevent state mixing.
+    
+    Note: Control logs storage is not yet implemented in PostgreSQL schema.
+    This endpoint will return success but not persist control logs until schema is updated.
     """
     try:
         user_id = x_farm_id
@@ -322,41 +286,10 @@ def control_farm(
         if not action or not current_state:
             raise HTTPException(status_code=400, detail="Missing action or state")
         
-        # Store control action in database for audit trail
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        
-        # Create control_logs table if not exists
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS control_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT NOT NULL,
-                action TEXT NOT NULL,
-                state_before TEXT NOT NULL,
-                state_after TEXT,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            )
-        """)
-        
         # Simulate Physics
         new_state = physics_engine.simulate_action(action, current_state)
         
-        # Log the control action
-        import json
-        cursor.execute("""
-            INSERT INTO control_logs 
-            (user_id, action, state_before, state_after)
-            VALUES (?, ?, ?, ?)
-        """, (
-            user_id,
-            action,
-            json.dumps(current_state),
-            json.dumps(new_state)
-        ))
-        
-        conn.commit()
-        conn.close()
+        # TODO: Store control logs in PostgreSQL when schema is updated
         
         return {
             "success": True,

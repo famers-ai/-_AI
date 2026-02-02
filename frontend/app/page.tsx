@@ -465,14 +465,19 @@ export default function Dashboard() {
       </div>
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-            Dashboard
-          </h2>
-          <div className="flex items-center gap-2">
-            <p className="text-slate-500">Real-time Farm Monitoring & AI Insights</p>
+          <div className="flex items-center gap-3 mb-1">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 bg-clip-text text-transparent">
+              Virtual Sensor System
+            </h2>
+            <span className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-lg shadow-purple-500/30 animate-pulse">
+              ✨ AI-Powered
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-slate-600 font-medium">Physics-Based Environmental Modeling</p>
             {data?.indoor?.vpd_status?.includes("Virtual") && (
-              <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full border border-purple-200 font-medium">
-                ✨ Sensorless Optimized
+              <span className="bg-emerald-50 text-emerald-700 text-xs px-2 py-0.5 rounded-full border border-emerald-200 font-medium">
+                🌱 No Hardware Required
               </span>
             )}
           </div>
@@ -517,6 +522,47 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Virtual Sensor System Info Banner */}
+      {data?.indoor?.vpd_status?.includes("Virtual") && (
+        <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-2xl p-6 shadow-xl border-2 border-purple-400/50 relative overflow-hidden">
+          {/* Animated Background */}
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 animate-pulse"></div>
+
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-4">
+            <div className="flex-shrink-0 bg-white/20 backdrop-blur-sm p-4 rounded-xl border border-white/30">
+              <span className="text-5xl">🧠</span>
+            </div>
+
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                Virtual Sensor System Active
+                <span className="text-xs bg-white/20 px-2 py-1 rounded-full border border-white/30">Beta</span>
+              </h3>
+              <p className="text-purple-100 text-sm leading-relaxed mb-3">
+                Our AI combines <strong>outdoor weather data</strong> with <strong>thermodynamic physics models</strong> to estimate your indoor environment.
+                <strong className="text-white"> No sensors or hardware required!</strong>
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 text-xs text-white bg-white/10 px-3 py-1.5 rounded-full border border-white/20">
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                  Real-time Weather Integration
+                </div>
+                <div className="flex items-center gap-2 text-xs text-white bg-white/10 px-3 py-1.5 rounded-full border border-white/20">
+                  <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
+                  Physics-Based Modeling
+                </div>
+                <button
+                  onClick={() => setShowCalibration(true)}
+                  className="text-xs bg-white text-purple-700 hover:bg-purple-50 px-4 py-1.5 rounded-full font-bold transition-all shadow-lg hover:shadow-xl hover:scale-105"
+                >
+                  ⚡ Calibrate for Better Accuracy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -525,54 +571,73 @@ export default function Dashboard() {
 
           {/* Environment Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Indoor Card */}
-            <div className="metric-card bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+            {/* Indoor Card - Virtual Sensor System */}
+            <div className="metric-card bg-gradient-to-br from-purple-50 via-white to-indigo-50 p-6 rounded-2xl shadow-md border-2 border-purple-200 flex flex-col justify-between hover:shadow-xl transition-all hover:scale-[1.02]">
               <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-1 mb-2">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Indoor Microclimate</p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-1 rounded-full">
+                      <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                      <p className="text-xs font-bold uppercase tracking-wider">Virtual Sensor Active</p>
+                    </div>
                     <div className="group relative">
-                      <HelpCircle size={12} className="text-slate-300 hover:text-slate-400 cursor-help" />
-                      <div className="absolute left-0 bottom-full mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded shadow-xl hidden group-hover:block z-50">
-                        VPD (Vapor Pressure Deficit) measures the drying power of the air. Key for plant growth.
+                      <HelpCircle size={14} className="text-purple-400 hover:text-purple-600 cursor-help" />
+                      <div className="absolute left-0 bottom-full mb-2 w-56 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl hidden group-hover:block z-50">
+                        <p className="font-bold mb-1">🧠 AI Physics Model</p>
+                        Our AI combines outdoor weather data with your location to estimate indoor conditions using thermodynamic principles. No sensors needed!
                       </div>
                     </div>
                   </div>
-                  <h3 className="text-3xl font-bold text-slate-800 mt-2">
-                    {data.indoor.vpd ?? "--"} <span className="text-sm font-normal text-slate-400">kPa</span>
-                  </h3>
-                  <p className={clsx("text-sm font-medium mt-1",
+
+                  <div className="flex items-baseline gap-2">
+                    <h3 className="text-4xl font-bold bg-gradient-to-r from-purple-700 to-indigo-700 bg-clip-text text-transparent">
+                      {data.indoor.vpd ?? "--"}
+                    </h3>
+                    <span className="text-sm font-semibold text-slate-500">kPa VPD</span>
+                  </div>
+
+                  <p className={clsx("text-sm font-bold mt-2 flex items-center gap-1.5",
                     data.indoor.vpd_status?.includes("Risk") ? "text-yellow-600" : "text-emerald-600"
-                  )}>{data.indoor.vpd_status}</p>
+                  )}>
+                    {data.indoor.vpd_status?.includes("Risk") ? "⚠️" : "✅"} {data.indoor.vpd_status}
+                  </p>
 
                   {data.indoor.vpd_status?.includes("Virtual") && (
-                    <div className="mt-1 flex items-center gap-1 text-xs text-purple-600">
-                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
-                      Physics Model Est.
-                      <button
-                        onClick={() => setShowCalibration(true)}
-                        className="ml-2 px-1.5 py-0.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded text-[10px] uppercase font-bold tracking-wide transition-colors"
-                      >
-                        Fix?
-                      </button>
+                    <div className="mt-3 p-2 bg-purple-100/50 rounded-lg border border-purple-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs text-purple-700 font-medium">
+                          <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></span>
+                          AI Physics Model Running
+                        </div>
+                        <button
+                          onClick={() => setShowCalibration(true)}
+                          className="px-2 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-md text-xs font-bold uppercase tracking-wide transition-all shadow-sm hover:shadow-md"
+                        >
+                          Calibrate
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
-                <div className="text-right">
-                  <div className="text-slate-500 text-sm">Temp</div>
-                  <div className="font-semibold text-lg">{data.indoor.temperature ?? "--"}°F</div>
-                  <div className="text-slate-500 text-sm mt-2">Humidity</div>
-                  <div className="font-semibold text-lg">{data.indoor.humidity ?? "--"}%</div>
+
+                <div className="text-right ml-4">
+                  <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-purple-100 shadow-sm">
+                    <div className="text-purple-600 text-xs font-bold uppercase">Temp</div>
+                    <div className="font-bold text-2xl text-slate-800">{data.indoor.temperature ?? "--"}°F</div>
+                    <div className="text-purple-600 text-xs font-bold uppercase mt-3">Humidity</div>
+                    <div className="font-bold text-2xl text-slate-800">{data.indoor.humidity ?? "--"}%</div>
+                  </div>
                 </div>
               </div>
+
               {data.indoor.vpd && data.indoor.vpd_status?.includes("Risk") &&
-                <div className="mt-4 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-yellow-400 h-full w-[80%]"></div>
+                <div className="mt-4 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div className="bg-gradient-to-r from-yellow-400 to-orange-400 h-full w-[80%] animate-pulse"></div>
                 </div>
               }
               {!data.indoor.temperature && (
-                <div className="mt-4 text-xs text-center text-slate-400 bg-slate-50 py-2 rounded-lg border border-dashed border-slate-200">
-                  No data recorded today
+                <div className="mt-4 text-xs text-center text-purple-600 bg-purple-50 py-3 rounded-lg border border-purple-200">
+                  🌱 Virtual sensors initializing...
                 </div>
               )}
             </div>
@@ -610,24 +675,27 @@ export default function Dashboard() {
 
         {/* Right Column: AI Action Plan */}
         <div className="lg:col-span-1">
-          <div className="bg-slate-900 rounded-2xl p-6 shadow-xl border border-slate-700 h-full flex flex-col text-white">
+          <div className="bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 rounded-2xl p-6 shadow-2xl border-2 border-purple-500/30 h-full flex flex-col text-white">
             {/* Header with Connectivity Status */}
             <div className="flex justify-between items-start mb-6">
               <div>
-                <p className="text-xs font-semibold text-indigo-200 uppercase tracking-wider mb-1">AI Diagnostics</p>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold">Hybrid Intelligence</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-lg shadow-emerald-400/50"></span>
+                  <p className="text-xs font-semibold text-purple-200 uppercase tracking-wider">AI Diagnostics Engine</p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-200 to-indigo-200 bg-clip-text text-transparent">Virtual Intelligence</h3>
                   {data.ai_meta && (
-                    <div className={clsx("px-2 py-0.5 rounded text-[10px] font-bold uppercase",
-                      data.ai_meta.confidence_score > 0.8 ? "bg-emerald-500/20 text-emerald-300" : "bg-yellow-500/20 text-yellow-300"
+                    <div className={clsx("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                      data.ai_meta.confidence_score > 0.8 ? "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30" : "bg-yellow-500/20 text-yellow-300 border border-yellow-400/30"
                     )}>
                       {Math.round(data.ai_meta.confidence_score * 100)}% Confidence
                     </div>
                   )}
                 </div>
               </div>
-              <div className="p-2 bg-indigo-500/20 rounded-lg">
-                <RefreshCw className={clsx("w-6 h-6 text-indigo-300", analyzing ? "animate-spin" : "")} />
+              <div className="p-2 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-lg border border-purple-400/30">
+                <RefreshCw className={clsx("w-6 h-6 text-purple-300", analyzing ? "animate-spin" : "")} />
               </div>
             </div>
 

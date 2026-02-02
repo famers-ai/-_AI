@@ -24,8 +24,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             console.log("Sign in callback:", { user, account, profile })
 
             // Create or update user in backend database
+            // Use a timeout to prevent blocking the sign-in flow
             try {
                 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+
+                // Create abort controller with 5 second timeout
+                const controller = new AbortController()
+                const timeoutId = setTimeout(() => controller.abort(), 5000)
 
                 const response = await fetch(`${API_URL}/users/sync`, {
                     method: 'POST',
@@ -38,14 +43,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         image: user.image,
                         provider: account?.provider,
                         provider_id: account?.providerAccountId
-                    })
+                    }),
+                    signal: controller.signal
                 })
+
+                clearTimeout(timeoutId)
 
                 if (!response.ok) {
                     console.error("Failed to sync user with backend:", await response.text())
+                    // Don't block sign-in even if backend sync fails
                 }
             } catch (error) {
-                console.error("Error syncing user with backend:", error)
+                if (error instanceof Error && error.name === 'AbortError') {
+                    console.error("Backend sync timed out - continuing with sign-in")
+                } else {
+                    console.error("Error syncing user with backend:", error)
+                }
+                // Don't block sign-in even if backend sync fails
             }
 
             return true

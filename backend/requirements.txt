@@ -9,3 +9,5 @@ Pillow
 fpdf2
 python-multipart
 slowapi
+psycopg2-binary
+sqlalchemy

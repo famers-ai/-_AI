@@ -5,19 +5,12 @@ Generates weekly reports based on real user data
 
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
-import sqlite3
-import os
+from sqlalchemy.orm import Session
+from sqlalchemy import func, and_
+
+from app.core.database import get_db, User, SensorReading, PestForecast
 
 router = APIRouter()
-
-# Database path
-from app.core.config import DB_NAME
-
-def get_db_connection():
-    """Get database connection"""
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 # TODO: Implement proper authentication
 def get_current_user_id(user_id: str = "test_user_001"):
@@ -25,40 +18,41 @@ def get_current_user_id(user_id: str = "test_user_001"):
     return user_id
 
 @router.get("/weekly")
-async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
+async def get_weekly_report(
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """
     Generate weekly report based on user's actual sensor data
     """
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # 0. Get User Crop Info (NEW)
-        cursor.execute("SELECT crop_type FROM users WHERE id = ?", (user_id,))
-        user_row = cursor.fetchone()
-        crop_type = user_row['crop_type'] if user_row and user_row['crop_type'] else "Crops"
+        # 0. Get User Crop Info
+        user = db.query(User).filter(User.id == user_id).first()
+        crop_type = user.crop_type if user and user.crop_type else "Crops"
 
         # 1. Get current week data (last 7 days)
-        cursor.execute("""
-            SELECT 
-                DATE(timestamp) as date,
-                AVG(temperature) as avg_temp,
-                AVG(humidity) as avg_humidity,
-                AVG(vpd) as avg_vpd,
-                COUNT(*) as readings_count
-            FROM sensor_readings
-            WHERE user_id = ?
-            AND data_source = 'manual'
-            AND timestamp >= datetime('now', '-7 days')
-            GROUP BY DATE(timestamp)
-            ORDER BY date ASC
-        """, (user_id,))
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
         
-        current_week = cursor.fetchall()
+        current_week_data = db.query(
+            func.date(SensorReading.timestamp).label('date'),
+            func.avg(SensorReading.temperature).label('avg_temp'),
+            func.avg(SensorReading.humidity).label('avg_humidity'),
+            # Note: VPD calculation - you may need to add vpd column or calculate it
+            # For now, using a placeholder calculation
+            func.count(SensorReading.id).label('readings_count')
+        ).filter(
+            and_(
+                SensorReading.user_id == user_id,
+                SensorReading.timestamp >= seven_days_ago
+            )
+        ).group_by(
+            func.date(SensorReading.timestamp)
+        ).order_by(
+            func.date(SensorReading.timestamp).asc()
+        ).all()
         
         # Check if user has data
-        if not current_week:
-            conn.close()
+        if not current_week_data:
             return {
                 "has_data": False,
                 "message": "No data available. Please record your farm data daily to see weekly reports.",
@@ -66,35 +60,52 @@ async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
             }
         
         # 2. Get previous week data (8-14 days ago)
-        cursor.execute("""
-            SELECT 
-                AVG(temperature) as prev_avg_temp,
-                AVG(humidity) as prev_avg_humidity,
-                AVG(vpd) as prev_avg_vpd
-            FROM sensor_readings
-            WHERE user_id = ?
-            AND data_source = 'manual'
-            AND timestamp >= datetime('now', '-14 days')
-            AND timestamp < datetime('now', '-7 days')
-        """, (user_id,))
+        fourteen_days_ago = datetime.utcnow() - timedelta(days=14)
         
-        prev_week = cursor.fetchone()
+        prev_week_data = db.query(
+            func.avg(SensorReading.temperature).label('prev_avg_temp'),
+            func.avg(SensorReading.humidity).label('prev_avg_humidity')
+        ).filter(
+            and_(
+                SensorReading.user_id == user_id,
+                SensorReading.timestamp >= fourteen_days_ago,
+                SensorReading.timestamp < seven_days_ago
+            )
+        ).first()
         
-        # 3. Get pest risk data (if available) - Assuming table exists, if not handle gracefully
+        # 3. Get pest risk data (if available)
         try:
-            cursor.execute("""
-                SELECT AVG(risk_score) as avg_risk
-                FROM pest_forecasts
-                WHERE user_id = ?
-                AND date >= date('now', '-7 days')
-            """, (user_id,))
-            pest_risk_row = cursor.fetchone()
-        except sqlite3.OperationalError:
-            pest_risk_row = None
-        
-        conn.close()
+            pest_risk_data = db.query(
+                func.avg(PestForecast.risk_level).label('avg_risk')
+            ).filter(
+                and_(
+                    PestForecast.location == user.location if user else None,
+                    PestForecast.timestamp >= seven_days_ago
+                )
+            ).first()
+        except Exception:
+            pest_risk_data = None
+
         
         # 4. Calculate summary statistics
+        # Convert SQLAlchemy results to dict-like objects for easier processing
+        current_week = []
+        for row in current_week_data:
+            # Calculate VPD from temperature and humidity
+            # VPD (kPa) = (1 - RH/100) * SVP
+            # SVP = 0.6108 * exp(17.27 * T / (T + 237.3))
+            temp_c = (row.avg_temp - 32) * 5/9 if row.avg_temp else 0
+            svp = 0.6108 * (2.71828 ** (17.27 * temp_c / (temp_c + 237.3))) if temp_c else 0
+            vpd = (1 - (row.avg_humidity / 100)) * svp if row.avg_humidity else 0
+            
+            current_week.append({
+                'date': str(row.date),
+                'avg_temp': float(row.avg_temp) if row.avg_temp else None,
+                'avg_humidity': float(row.avg_humidity) if row.avg_humidity else None,
+                'avg_vpd': vpd,
+                'readings_count': row.readings_count
+            })
+        
         total_temp = sum(row['avg_temp'] for row in current_week if row['avg_temp'])
         total_humidity = sum(row['avg_humidity'] for row in current_week if row['avg_humidity'])
         total_vpd = sum(row['avg_vpd'] for row in current_week if row['avg_vpd'])
@@ -109,15 +120,20 @@ async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
         humidity_change = 0
         vpd_change = 0
         
-        if prev_week and prev_week['prev_avg_temp']:
-            temp_change = ((avg_temp - prev_week['prev_avg_temp']) / prev_week['prev_avg_temp']) * 100
-            humidity_change = ((avg_humidity - prev_week['prev_avg_humidity']) / prev_week['prev_avg_humidity']) * 100
-            vpd_change = ((avg_vpd - prev_week['prev_avg_vpd']) / prev_week['prev_avg_vpd']) * 100
+        if prev_week_data and prev_week_data.prev_avg_temp:
+            # Calculate previous week VPD
+            prev_temp_c = (prev_week_data.prev_avg_temp - 32) * 5/9
+            prev_svp = 0.6108 * (2.71828 ** (17.27 * prev_temp_c / (prev_temp_c + 237.3)))
+            prev_avg_vpd = (1 - (prev_week_data.prev_avg_humidity / 100)) * prev_svp if prev_week_data.prev_avg_humidity else 0
+            
+            temp_change = ((avg_temp - prev_week_data.prev_avg_temp) / prev_week_data.prev_avg_temp) * 100
+            humidity_change = ((avg_humidity - prev_week_data.prev_avg_humidity) / prev_week_data.prev_avg_humidity) * 100 if prev_week_data.prev_avg_humidity else 0
+            vpd_change = ((avg_vpd - prev_avg_vpd) / prev_avg_vpd) * 100 if prev_avg_vpd else 0
         
         # 6. Determine pest risk
         pest_risk = 10  # Default low risk
-        if pest_risk_row and pest_risk_row['avg_risk']:
-            pest_risk = round(pest_risk_row['avg_risk'])
+        if pest_risk_data and pest_risk_data.avg_risk:
+            pest_risk = round(float(pest_risk_data.avg_risk))
         else:
             # Calculate based on VPD if no forecast data
             if avg_vpd < 0.4:
@@ -205,6 +221,7 @@ async def get_weekly_report(user_id: str = Depends(get_current_user_id)):
                 "end": current_week[-1]['date']
             }
         }
+
         
     except Exception as e:
         import traceback

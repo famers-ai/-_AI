@@ -1,13 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import dashboard, ai, forecast, market, sensors, reports, users, location
-from app.core.db_init import init_db_if_missing
+from app.core.database import init_db
 
 app = FastAPI(title="Smart Farm AI API", version="2.0.0")
 
 @app.on_event("startup")
 async def startup_event():
-    init_db_if_missing()
+    """Initialize PostgreSQL database on startup"""
+    try:
+        init_db()
+        print("✅ PostgreSQL database initialized successfully")
+    except Exception as e:
+        print(f"⚠️  Database initialization warning: {e}")
+
 
 # CORS configuration
 origins = [

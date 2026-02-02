@@ -8,7 +8,8 @@ import TermsAgreementModal from "@/components/TermsAgreementModal";
 import DataInputModal from "@/components/DataInputModal";
 import CalibrationModal from "@/components/CalibrationModal";
 import ControlPanel from "@/components/ControlPanel";
-import { ServerWakeupLoader, DashboardSkeleton } from "@/components/LoadingComponents";
+import { ServerWakeupLoader, DashboardSkeleton, EnhancedLoading } from "@/components/LoadingComponents";
+import ErrorDisplay from "@/components/ErrorDisplay";
 
 import { getFarmCondition, getVPDSignal } from "@/lib/farm-signals";
 import LocationDisplay from '@/components/LocationDisplay';
@@ -23,10 +24,31 @@ import {
 } from "@/lib/location";
 import { useSession, signIn, signOut } from "next-auth/react";
 
+// Loading stages for better UX
+const LOADING_STAGES = [
+  { time: 0, message: "🔐 Authenticating...", stage: "auth" },
+  { time: 2, message: "📍 Detecting location...", stage: "location" },
+  { time: 5, message: "🌤️ Fetching weather data...", stage: "weather" },
+  { time: 10, message: "🧠 Analyzing with AI...", stage: "ai" },
+  { time: 15, message: "⏰ Waking up server...", stage: "server" },
+  { time: 30, message: "🚀 Almost ready...", stage: "final" }
+];
+
+type ErrorType = 'network' | 'auth' | 'location' | 'server' | 'timeout' | 'unknown';
+
+interface AppError {
+  type: ErrorType;
+  message: string;
+  details?: string;
+  canRetry: boolean;
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingElapsed, setLoadingElapsed] = useState(0); // Track loading time
+  const [loadingStage, setLoadingStage] = useState("auth");
+  const [error, setError] = useState<AppError | null>(null);
   const [city, setCity] = useState("San Francisco");
   const [selectedCropId, setSelectedCropId] = useState(DEFAULT_CROP);
 
@@ -52,6 +74,16 @@ export default function Dashboard() {
 
   const { data: session, status } = useSession();
 
+  // Get current loading message based on elapsed time
+  const getCurrentLoadingStage = () => {
+    for (let i = LOADING_STAGES.length - 1; i >= 0; i--) {
+      if (loadingElapsed >= LOADING_STAGES[i].time) {
+        return LOADING_STAGES[i];
+      }
+    }
+    return LOADING_STAGES[0];
+  };
+
 
   // Strategy 1: Detect user's country & Check Auth (Google Only)
   useEffect(() => {
@@ -75,19 +107,25 @@ export default function Dashboard() {
 
   }, [status, session]);
 
-  // CRITICAL: Sync logout across tabs to prevent data mixing
+  // CRITICAL: Sync auth state across tabs to prevent data mixing
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       // If farm_id is removed in another tab, log out this tab too
       if (e.key === "farm_id" && e.newValue === null) {
         console.log("🚨 Logout detected in another tab - logging out this tab");
+        setIsLoggedIn(false);
         signOut({ callbackUrl: "/" });
+      }
+      // If farm_id is added in another tab, sync login state
+      else if (e.key === "farm_id" && e.newValue !== null && !isLoggedIn) {
+        console.log("✅ Login detected in another tab - syncing this tab");
+        window.location.reload(); // Reload to sync session
       }
     };
 
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [isLoggedIn]);
 
   // Loading timer effect
   useEffect(() => {
@@ -151,18 +189,24 @@ export default function Dashboard() {
   async function loadData(cityName?: string, lat?: number, lon?: number, countryCode?: string) {
     setLoading(true);
     setLoadingElapsed(0); // Reset timer
-    // setLocationError(null);
+    setLoadingStage("location");
+    setError(null); // Clear previous errors
+
     try {
       const targetCity = cityName || city;
 
       // Strategy 1: Pass detected country (or saved country) to API for better geocoding
       const targetCountry = countryCode || detectUserCountry() || undefined;
+
+      setLoadingStage("weather");
       let dashboardData = await fetchDashboardData(targetCity, lat, lon, targetCountry);
 
       // Check for backend error or empty data
       if (!dashboardData || !dashboardData.location || !dashboardData.location.name) {
         throw new Error("Invalid location data received from server");
       }
+
+      setLoadingStage("ai");
 
       // Fetch user profile to check terms agreement
       try {
@@ -218,16 +262,57 @@ export default function Dashboard() {
       }
 
       setData(dashboardData);
-      // setLocationError(null);
+      setError(null); // Clear any previous errors
     } catch (e: any) {
-      console.error(e);
-      // setData(null); // Keep previous data if possible? Or clear it? 
-      // Let's keep data if available, but show error. 
-      // If it's a "not found" error, maybe we should clear.
-      // setLocationError(cityName ? `Could not find "${cityName}". Try another city.` : 'Failed to load data.');
+      console.error("Data loading error:", e);
+
+      // Determine error type and create user-friendly message
+      let errorType: ErrorType = 'unknown';
+      let errorMessage = 'Failed to load data';
+      let errorDetails = e.message;
+      let canRetry = true;
+
+      if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError')) {
+        errorType = 'network';
+        errorMessage = 'Unable to connect to server';
+        errorDetails = 'Please check your internet connection and try again.';
+      } else if (e.message?.includes('401') || e.message?.includes('Unauthorized')) {
+        errorType = 'auth';
+        errorMessage = 'Authentication required';
+        errorDetails = 'Please sign in to continue.';
+        canRetry = false;
+        // Auto-logout on 401
+        localStorage.removeItem('farm_id');
+        signOut({ callbackUrl: '/' });
+      } else if (e.message?.includes('location') || e.message?.includes('Invalid location')) {
+        errorType = 'location';
+        errorMessage = 'Location not found';
+        errorDetails = cityName
+          ? `Could not find "${cityName}". Please try a different location.`
+          : 'Unable to detect your location. Please enable GPS or enter manually.';
+      } else if (e.message?.includes('timeout') || e.message?.includes('AbortError')) {
+        errorType = 'timeout';
+        errorMessage = 'Request timed out';
+        errorDetails = 'The server might be waking up. Please wait a moment and try again.';
+      } else if (e.message?.includes('500') || e.message?.includes('Server Error')) {
+        errorType = 'server';
+        errorMessage = 'Server error';
+        errorDetails = 'Our servers are temporarily unavailable. Please try again in a few moments.';
+      }
+
+      setError({
+        type: errorType,
+        message: errorMessage,
+        details: errorDetails,
+        canRetry
+      });
+
+      // Keep previous data if available (don't clear on error)
+      // This allows users to see stale data rather than nothing
     } finally {
       setLoading(false);
       setLoadingElapsed(0); // Reset timer
+      setLoadingStage("auth");
     }
   }
 
@@ -418,10 +503,25 @@ export default function Dashboard() {
 
   // 3. Loading Data (Authenticated but fetching)
   if (loading) {
-    return <ServerWakeupLoader elapsed={loadingElapsed} maxWait={60} />;
+    const currentStage = getCurrentLoadingStage();
+    return <EnhancedLoading elapsed={loadingElapsed} stageMessage={currentStage.message} maxWait={60} />;
   }
 
   // 4. Error State
+  if (error) {
+    return (
+      <ErrorDisplay
+        type={error.type}
+        message={error.message}
+        details={error.details}
+        canRetry={error.canRetry}
+        onRetry={() => loadData()}
+        onDismiss={() => setError(null)}
+      />
+    );
+  }
+
+  // 5. No Data (Fallback)
   if (!data) {
     return (
       <div className="flex flex-col h-[50vh] items-center justify-center text-slate-400">

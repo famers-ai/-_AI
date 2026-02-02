@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 
 import { Sidebar } from "@/components/Sidebar";
+import MobileNav from "@/components/MobileNav";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,7 +30,7 @@ export default function RootLayout({
         <Providers>
           <div className="flex min-h-screen">
             <Sidebar />
-            <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative">
+            <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen relative pb-20 md:pb-8">
               <div className="max-w-7xl mx-auto">
                 <Header />
                 <ErrorBoundary>
@@ -38,6 +39,7 @@ export default function RootLayout({
               </div>
             </main>
           </div>
+          <MobileNav />
         </Providers>
       </body>
     </html>

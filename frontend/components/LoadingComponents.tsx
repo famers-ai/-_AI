@@ -50,9 +50,10 @@ export function LoadingSkeleton({
 interface ServerWakeupLoaderProps {
     elapsed: number;
     maxWait?: number;
+    stage?: string;
 }
 
-export function ServerWakeupLoader({ elapsed, maxWait = 60 }: ServerWakeupLoaderProps) {
+export function ServerWakeupLoader({ elapsed, maxWait = 60, stage = "auth" }: ServerWakeupLoaderProps) {
     const progress = Math.min((elapsed / maxWait) * 100, 95);
 
     const getMessage = () => {
@@ -82,6 +83,67 @@ export function ServerWakeupLoader({ elapsed, maxWait = 60 }: ServerWakeupLoader
             showProgress={true}
             progress={Math.round(progress)}
         />
+    );
+}
+
+// New: Enhanced loading with stage messages
+interface EnhancedLoadingProps {
+    elapsed: number;
+    stageMessage: string;
+    maxWait?: number;
+}
+
+export function EnhancedLoading({ elapsed, stageMessage, maxWait = 60 }: EnhancedLoadingProps) {
+    const progress = Math.min((elapsed / maxWait) * 100, 95);
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+            <div className="text-center max-w-md px-6">
+                {/* Animated Icon */}
+                <div className="relative mb-8">
+                    <div className="w-24 h-24 mx-auto">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full animate-pulse opacity-20"></div>
+                        <div className="absolute inset-2 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full animate-spin" style={{ animationDuration: '3s' }}></div>
+                        <div className="absolute inset-4 bg-white rounded-full flex items-center justify-center">
+                            <Loader2 className="w-12 h-12 text-purple-600 animate-spin" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Stage Message */}
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-3">
+                    {stageMessage}
+                </h2>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-200 rounded-full h-2 mb-4 overflow-hidden">
+                    <div
+                        className="h-full bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 transition-all duration-500 ease-out relative"
+                        style={{ width: `${progress}%` }}
+                    >
+                        <div className="absolute inset-0 bg-white/30 animate-pulse"></div>
+                    </div>
+                </div>
+
+                {/* Time Indicator */}
+                <p className="text-sm text-slate-500 mb-6">
+                    {elapsed < 10 && "Just a moment..."}
+                    {elapsed >= 10 && elapsed < 30 && `${elapsed}s - Server is waking up...`}
+                    {elapsed >= 30 && `${elapsed}s - Almost there...`}
+                </p>
+
+                {/* Tips */}
+                {elapsed > 15 && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-left animate-fadeIn">
+                        <p className="text-xs text-purple-800 font-medium mb-2">💡 Did you know?</p>
+                        <p className="text-xs text-purple-700">
+                            Our AI uses thermodynamic physics models to estimate your indoor environment
+                            without any sensors. No hardware required!
+                        </p>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }
 

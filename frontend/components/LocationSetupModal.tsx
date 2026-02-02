@@ -11,8 +11,16 @@ interface LocationSetupModalProps {
 
 export default function LocationSetupModal({ isOpen, onLocationSet, onSkip }: LocationSetupModalProps) {
     const [isGettingLocation, setIsGettingLocation] = useState(false);
+    const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
     const [manualCity, setManualCity] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [detectedLocation, setDetectedLocation] = useState<{
+        city: string;
+        region?: string;
+        country?: string;
+        lat: number;
+        lon: number;
+    } | null>(null);
 
     if (!isOpen) return null;
 
@@ -24,12 +32,57 @@ export default function LocationSetupModal({ isOpen, onLocationSet, onSkip }: Lo
 
         setIsGettingLocation(true);
         setError(null);
+        setDetectedLocation(null);
 
         navigator.geolocation.getCurrentPosition(
-            (position) => {
+            async (position) => {
                 const { latitude, longitude } = position.coords;
                 console.log(`📍 GPS location obtained: ${latitude}, ${longitude}`);
-                onLocationSet(undefined, latitude, longitude);
+
+                // Perform reverse geocoding to show user where they are
+                setIsReverseGeocoding(true);
+                try {
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+                        {
+                            headers: {
+                                'User-Agent': 'SmartFarmAI/1.0'
+                            }
+                        }
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const address = data.address;
+                        const city = address.city || address.town || address.village || address.suburb || address.county || 'Unknown';
+                        const region = address.state || address.region || address.province;
+                        const country = address.country;
+
+                        setDetectedLocation({
+                            city,
+                            region,
+                            country,
+                            lat: latitude,
+                            lon: longitude
+                        });
+                    } else {
+                        // Fallback if geocoding fails
+                        setDetectedLocation({
+                            city: `Location (${latitude.toFixed(2)}, ${longitude.toFixed(2)})`,
+                            lat: latitude,
+                            lon: longitude
+                        });
+                    }
+                } catch (err) {
+                    console.error('Reverse geocoding failed:', err);
+                    // Fallback
+                    setDetectedLocation({
+                        city: `Location (${latitude.toFixed(2)}, ${longitude.toFixed(2)})`,
+                        lat: latitude,
+                        lon: longitude
+                    });
+                }
+                setIsReverseGeocoding(false);
                 setIsGettingLocation(false);
             },
             (err) => {
@@ -49,10 +102,22 @@ export default function LocationSetupModal({ isOpen, onLocationSet, onSkip }: Lo
             },
             {
                 enableHighAccuracy: true,
-                timeout: 15000, // Increased to 15s for better reliability
+                timeout: 15000,
                 maximumAge: 0
             }
         );
+    };
+
+    const handleConfirmLocation = () => {
+        if (detectedLocation) {
+            onLocationSet(undefined, detectedLocation.lat, detectedLocation.lon);
+            setDetectedLocation(null);
+        }
+    };
+
+    const handleCancelDetection = () => {
+        setDetectedLocation(null);
+        setError(null);
     };
 
     const handleManualSubmit = (e: React.FormEvent) => {
@@ -86,24 +151,62 @@ export default function LocationSetupModal({ isOpen, onLocationSet, onSkip }: Lo
                     </p>
                 </div>
 
-                {/* GPS Option */}
-                <button
-                    onClick={handleUseGPS}
-                    disabled={isGettingLocation}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-3 transition-all mb-4 shadow-lg shadow-emerald-200 hover:shadow-xl active:scale-95"
-                >
-                    {isGettingLocation ? (
-                        <>
-                            <Loader2 className="animate-spin" size={20} />
-                            Getting your location...
-                        </>
-                    ) : (
-                        <>
-                            <LocateFixed size={20} />
-                            Use My Current Location
-                        </>
-                    )}
-                </button>
+                {/* Detected Location Confirmation */}
+                {detectedLocation ? (
+                    <div className="mb-6 p-4 bg-emerald-50 border-2 border-emerald-200 rounded-xl">
+                        <div className="flex items-start gap-3 mb-3">
+                            <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                <MapPin className="text-white" size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-semibold text-emerald-900 mb-1">Location Detected</h3>
+                                <p className="text-sm text-emerald-700">
+                                    <span className="font-medium">{detectedLocation.city}</span>
+                                    {detectedLocation.region && `, ${detectedLocation.region}`}
+                                    {detectedLocation.country && ` · ${detectedLocation.country}`}
+                                </p>
+                                <p className="text-xs text-emerald-600 mt-1">
+                                    📍 {detectedLocation.lat.toFixed(4)}, {detectedLocation.lon.toFixed(4)}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleConfirmLocation}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-md hover:shadow-lg"
+                            >
+                                ✓ Confirm Location
+                            </button>
+                            <button
+                                onClick={handleCancelDetection}
+                                className="px-4 bg-white hover:bg-slate-50 text-slate-700 font-medium py-2.5 rounded-lg border border-slate-300 transition-all"
+                            >
+                                Try Again
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {/* GPS Option */}
+                        <button
+                            onClick={handleUseGPS}
+                            disabled={isGettingLocation || isReverseGeocoding}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-3 transition-all mb-4 shadow-lg shadow-emerald-200 hover:shadow-xl active:scale-95"
+                        >
+                            {isGettingLocation || isReverseGeocoding ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={20} />
+                                    {isReverseGeocoding ? 'Detecting location...' : 'Getting your location...'}
+                                </>
+                            ) : (
+                                <>
+                                    <LocateFixed size={20} />
+                                    Use My Current Location
+                                </>
+                            )}
+                        </button>
+                    </>
+                )}
 
                 {/* Error Message */}
                 {error && (

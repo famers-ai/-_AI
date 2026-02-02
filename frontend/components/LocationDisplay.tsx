@@ -239,29 +239,43 @@ export default function LocationDisplay() {
                 </div>
             )}
 
-            <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                <MapPin className="text-green-600" size={18} />
+            <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow group">
+                <MapPin className="text-green-600 flex-shrink-0" size={18} />
 
                 {location.hasLocation ? (
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">
-                            {location.city}
-                            {location.region && `, ${location.region}`}
-                        </span>
+                    <div className="flex items-center gap-2 flex-1">
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-900">
+                                    {location.city}
+                                </span>
+                                {location.country && (
+                                    <span className="text-xs text-gray-500 font-medium">
+                                        {location.country}
+                                    </span>
+                                )}
+                            </div>
+                            {location.region && (
+                                <span className="text-xs text-gray-500">
+                                    {location.region}
+                                </span>
+                            )}
+                        </div>
                         <button
                             onClick={() => setShowModal(true)}
-                            className="text-gray-400 hover:text-green-600 transition-colors p-1 rounded hover:bg-green-50"
+                            className="ml-auto text-gray-400 hover:text-green-600 transition-colors p-1.5 rounded-lg hover:bg-green-50 flex-shrink-0"
                             title="Change location"
                         >
-                            <Settings size={14} />
+                            <Settings size={16} />
                         </button>
                     </div>
                 ) : (
                     <button
                         onClick={() => setShowModal(true)}
-                        className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
+                        className="text-sm text-green-600 hover:text-green-700 font-semibold transition-colors flex items-center gap-1.5"
                     >
-                        Set your location
+                        <span>Set your location</span>
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Required</span>
                     </button>
                 )}
             </div>

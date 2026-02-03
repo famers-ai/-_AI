@@ -3,7 +3,7 @@ User Management API
 Handles user profile and preferences, including legal consent
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -17,9 +17,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Temporary auth placeholder
-def get_current_user_id(user_id: str = "test_user_001"):
-    return user_id
+# Authentication via X-Farm-ID header
+def get_current_user_id(x_farm_id: str = Header(..., alias="X-Farm-ID")):
+    """
+    Get current user ID from X-Farm-ID header.
+    This ensures all user data is isolated per user.
+    """
+    if not x_farm_id:
+        raise HTTPException(status_code=400, detail="Missing X-Farm-ID header")
+    return x_farm_id
 
 class UserProfile(BaseModel):
     name: Optional[str] = None

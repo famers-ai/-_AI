@@ -3,7 +3,7 @@ Weekly Report API for Smart Farm AI
 Generates weekly reports based on real user data
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
@@ -12,10 +12,15 @@ from app.core.database import get_db, User, SensorReading, PestForecast
 
 router = APIRouter()
 
-# TODO: Implement proper authentication
-def get_current_user_id(user_id: str = "test_user_001"):
-    """Get current user ID (placeholder for auth)"""
-    return user_id
+# Authentication via X-Farm-ID header
+def get_current_user_id(x_farm_id: str = Header(..., alias="X-Farm-ID")):
+    """
+    Get current user ID from X-Farm-ID header.
+    This ensures all user data is isolated per user.
+    """
+    if not x_farm_id:
+        raise HTTPException(status_code=400, detail="Missing X-Farm-ID header")
+    return x_farm_id
 
 @router.get("/weekly")
 async def get_weekly_report(

@@ -23,12 +23,34 @@ http://localhost:3000
 
 ## ⚡ 빠른 시작
 
-### 서버 시작하기
+### 1. API 키 설정 (최초 1회)
+
+AI 기능을 사용하려면 Gemini API 키가 필요합니다:
+
+```bash
+# 자동 설정 (권장)
+./setup_api_keys.sh
+
+# 또는 수동 설정
+cp .env.example .env
+# .env 파일을 편집하여 API 키 입력
+```
+
+**API 키 발급 방법**:
+- 🔗 [Google AI Studio](https://makersuite.google.com/app/apikey)에서 무료 발급
+- 📚 자세한 가이드: [GEMINI_API_SETUP.md](GEMINI_API_SETUP.md)
+
+**API 키 확인**:
+```bash
+python3 verify_api_keys.py
+```
+
+### 2. 서버 시작하기
 ```bash
 ./start.sh
 ```
 
-### 서버 종료하기
+### 3. 서버 종료하기
 ```bash
 ./stop.sh
 ```
@@ -93,6 +115,7 @@ http://localhost:3000
 ## 📚 문서
 
 - **[QUICK_START.md](QUICK_START.md)** - 빠른 시작 가이드
+- **[GEMINI_API_SETUP.md](GEMINI_API_SETUP.md)** - 🔑 Gemini API 키 설정 가이드 (필수!)
 - **[SERVER_STATUS.md](SERVER_STATUS.md)** - 현재 서버 상태
 - **[GOOGLE_LOGIN_TROUBLESHOOTING.md](GOOGLE_LOGIN_TROUBLESHOOTING.md)** - Google 로그인 문제 해결
 - **[frontend/GOOGLE_AUTH_SETUP.md](frontend/GOOGLE_AUTH_SETUP.md)** - Google OAuth 설정 가이드
@@ -119,6 +142,21 @@ smartfarm_ai/
 
 ### 환경 변수 설정
 
+**빠른 설정** (권장):
+```bash
+./setup_api_keys.sh  # 대화형 설정
+python3 verify_api_keys.py  # 설정 확인
+```
+
+**수동 설정**:
+
+**프로젝트 루트** (`.env`):
+```env
+GEMINI_API_KEY="your-gemini-api-key"
+OPENWEATHER_API_KEY="your-openweather-api-key"
+DB_PATH="./farm_data.db"
+```
+
 **Frontend** (`frontend/.env.local`):
 ```env
 AUTH_SECRET="your-secret-key"
@@ -127,10 +165,7 @@ AUTH_GOOGLE_SECRET="your-client-secret"
 NEXT_PUBLIC_API_URL="http://localhost:8000/api"
 ```
 
-**Backend** (`backend/.env`):
-```env
-GEMINI_API_KEY="your-gemini-api-key"
-```
+📚 자세한 설정 방법: [GEMINI_API_SETUP.md](GEMINI_API_SETUP.md)
 
 ### 수동 서버 시작
 

@@ -17,10 +17,10 @@ def get_api_key():
 def get_active_model_name():
     try:
         api_key = get_api_key()
-        if not api_key: return "gemini-1.5-pro"
+        if not api_key: return "gemini-2.5-pro"
     
-        # Force use of Gemini 1.5 Pro for maximum reasoning capability
-        return "gemini-1.5-pro"
+        # Force use of Gemini 2.5 Pro for maximum reasoning capability
+        return "gemini-2.5-pro"
     except:
         return "gemini-pro"
 
@@ -256,7 +256,7 @@ def analyze_crop_image(image_data, user_id=None, crop_type=None):
         )
         
         genai.configure(api_key=api_key)
-        model_name = "gemini-1.5-pro"
+        model_name = "gemini-2.5-pro"  # Updated to latest model
         model = genai.GenerativeModel(model_name)
         
         # Build context-aware prompt
@@ -351,7 +351,7 @@ def analyze_pest_risk_with_ai(weather_forecast, crop_type):
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash") # Flash is fine for simple JSON tasks
+        model = genai.GenerativeModel("gemini-2.5-flash")  # Flash is fine for simple JSON tasks
         
         prompt = f"""
         You are an expert plant pathologist. 
@@ -399,7 +399,7 @@ def analyze_market_prices_with_ai(crop_type):
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         
         prompt = f"""
         You are an agricultural market expert.

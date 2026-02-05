@@ -17,10 +17,11 @@ def get_api_key():
 def get_active_model_name():
     try:
         api_key = get_api_key()
-        if not api_key: return "gemini-2.5-pro"
+        if not api_key: return "gemini-2.5-flash"
     
-        # Force use of Gemini 2.5 Pro for maximum reasoning capability
-        return "gemini-2.5-pro"
+        # Use Gemini 2.5 Flash for better quota limits on free tier
+        # Flash is faster and has higher rate limits than Pro
+        return "gemini-2.5-flash"
     except:
         return "gemini-pro"
 
@@ -437,4 +438,82 @@ def analyze_market_prices_with_ai(crop_type):
 # Removed generate_fallback_market_data to ensure 100% Real/AI Data only.
 # No mock data allowed per user request.
 
+def analyze_environment_feedback(user_text: str) -> dict:
+    """
+    Analyzes user's voice/text input to extract environmental feedback.
+    
+    This is CRITICAL for the AI learning loop:
+    - Converts unstructured text like "It's hot" into structured data
+    - Extracts feedback type (EXACT, SENSORY, OBSERVATION)
+    - Extracts feedback value (temperature, humidity, plant condition)
+    
+    Args:
+        user_text: Raw user input (e.g., "It's 24 degrees", "Feels dry", "Leaves wilting")
+    
+    Returns:
+        {
+            "is_feedback": bool,  # Whether this text contains environmental feedback
+            "feedback_type": str,  # EXACT, SENSORY, or OBSERVATION
+            "feedback_value": str,  # Extracted value
+            "confidence": float  # How confident the AI is (0.0-1.0)
+        }
+    """
+    api_key = get_api_key()
+    if not api_key:
+        return {"is_feedback": False, "confidence": 0.0}
+    
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        
+        prompt = f"""
+        You are an expert at extracting environmental feedback from farmer's casual speech.
+        
+        Analyze this text: "{user_text}"
+        
+        Determine if it contains feedback about the farm environment (temperature, humidity, plant condition).
+        
+        FEEDBACK TYPES:
+        - EXACT: User provides a measured value (e.g., "It's 24 degrees", "Humidity is 60%")
+        - SENSORY: User describes how it feels (e.g., "It's hot", "Feels dry", "Stuffy")
+        - OBSERVATION: User describes plant/soil condition (e.g., "Leaves wilting", "Soil is dry")
+        
+        Return ONLY a valid JSON object (no markdown):
+        {{
+            "is_feedback": true/false,
+            "feedback_type": "EXACT" | "SENSORY" | "OBSERVATION" | null,
+            "feedback_value": "extracted value" | null,
+            "confidence": 0.0-1.0
+        }}
+        
+        Examples:
+        Input: "It's 24 degrees right now"
+        Output: {{"is_feedback": true, "feedback_type": "EXACT", "feedback_value": "24C", "confidence": 0.95}}
+        
+        Input: "Feels really hot and humid today"
+        Output: {{"is_feedback": true, "feedback_type": "SENSORY", "feedback_value": "HOT_HUMID", "confidence": 0.85}}
+        
+        Input: "The leaves are turning yellow and drooping"
+        Output: {{"is_feedback": true, "feedback_type": "OBSERVATION", "feedback_value": "YELLOWING_WILTING", "confidence": 0.90}}
+        
+        Input: "How's the weather tomorrow?"
+        Output: {{"is_feedback": false, "feedback_type": null, "feedback_value": null, "confidence": 0.0}}
+        """
+        
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        
+        # Clean and parse JSON
+        text = text.replace("```json", "").replace("```", "").strip()
+        import re
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            result = json.loads(match.group())
+            return result
+        
+        return {"is_feedback": False, "confidence": 0.0}
+        
+    except Exception as e:
+        print(f"Feedback analysis error: {e}")
+        return {"is_feedback": False, "confidence": 0.0}
 

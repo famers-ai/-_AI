@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-02-05T00:06:56.752801",
+  "overall_accuracy": 70.7,
+  "conservative_accuracy": 67.1,
+  "components": {
+    "vpd": {
+      "accuracy": 74.5,
+      "avg_error": 0.102,
+      "pass_rate": 100.0
+    },
+    "temperature": {
+      "accuracy": 49.3,
+      "avg_error": 1.52,
+      "pass_rate": 80.0
+    },
+    "humidity": {
+      "accuracy": 93.0,
+      "avg_error": 0.7,
+      "pass_rate": 100.0
+    }
+  },
+  "test_scenarios": 5,
+  "method": "Comparison with typical sensor readings",
+  "limitations": [
+    "Physics engine only (no AI)",
+    "Standard greenhouse assumptions",
+    "Depends on external weather accuracy"
+  ]
+}

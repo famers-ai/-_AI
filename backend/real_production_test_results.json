@@ -1,0 +1,74 @@
+{
+  "timestamp": "2026-02-05T00:06:01.529946",
+  "final_accuracy": 99.4,
+  "weighted_accuracy": 99.4,
+  "system_reliability": 100.0,
+  "components": {
+    "vpd": {
+      "accuracy": 98.81,
+      "avg_error": 1.19,
+      "test_cases": 5
+    },
+    "temperature": {
+      "accuracy": 100.0,
+      "tests_passed": 3,
+      "total_tests": 3,
+      "results": [
+        {
+          "location": "San Francisco (Mild)",
+          "external_temp": 15.0,
+          "predicted_temp": 17.0,
+          "expected_range": [
+            16.0,
+            22.0
+          ],
+          "in_range": true,
+          "error": 0
+        },
+        {
+          "location": "Phoenix (Hot)",
+          "external_temp": 30.0,
+          "predicted_temp": 32.5,
+          "expected_range": [
+            32.0,
+            38.0
+          ],
+          "in_range": true,
+          "error": 0
+        },
+        {
+          "location": "Seattle (Cool)",
+          "external_temp": 12.0,
+          "predicted_temp": 11.2,
+          "expected_range": [
+            11.0,
+            15.0
+          ],
+          "in_range": true,
+          "error": 0
+        }
+      ]
+    },
+    "humidity": {
+      "accuracy": 100.0,
+      "tests_passed": 3,
+      "total_tests": 3
+    },
+    "edge_cases": {
+      "accuracy": 100.0,
+      "tests_passed": 4,
+      "total_tests": 4
+    }
+  },
+  "scientific_basis": [
+    "Tetens Equation (Meteorology)",
+    "Greenhouse Microclimate Physics",
+    "Plant Transpiration Models"
+  ],
+  "limitations": [
+    "Physics only (no AI enhancement in test)",
+    "Standard greenhouse assumptions",
+    "Depends on external weather accuracy",
+    "Variable performance in extremes"
+  ]
+}

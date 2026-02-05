@@ -1,0 +1,196 @@
+{
+  "timestamp": "2026-02-04T21:45:59.871446",
+  "results": {
+    "conservative_accuracy": 82.5,
+    "realistic_accuracy": 84.2,
+    "best_case_accuracy": 96.3,
+    "worst_case_accuracy": 44.6,
+    "physics_baseline": 86.6,
+    "with_ai_enhancement": 93.0,
+    "expected_issue_impact": -8.83,
+    "components": {
+      "vpd": {
+        "accuracy": 87.13,
+        "error_margin": 0.103,
+        "typical_range": "0.4-1.2 kPa",
+        "error_sources": {
+          "temperature": "\u00b10.5\u00b0C",
+          "humidity": "\u00b13.0%"
+        }
+      },
+      "temperature": {
+        "weighted_accuracy": 88.35,
+        "best_case": 92.0,
+        "worst_case": 78.0,
+        "scenarios": {
+          "ideal_conditions": {
+            "description": "Clear day, moderate wind, stable weather",
+            "accuracy": 92.0,
+            "probability": 0.4,
+            "error_margin": "\u00b11.5\u00b0C"
+          },
+          "cloudy_day": {
+            "description": "Overcast, reduced solar gain",
+            "accuracy": 88.0,
+            "probability": 0.25,
+            "error_margin": "\u00b12.0\u00b0C"
+          },
+          "high_wind": {
+            "description": "Strong wind, increased ventilation effect",
+            "accuracy": 85.0,
+            "probability": 0.15,
+            "error_margin": "\u00b12.5\u00b0C"
+          },
+          "rapid_weather_change": {
+            "description": "Sudden temperature shifts, storms",
+            "accuracy": 78.0,
+            "probability": 0.1,
+            "error_margin": "\u00b13.5\u00b0C"
+          },
+          "night_time": {
+            "description": "Night with insulation effects",
+            "accuracy": 90.0,
+            "probability": 0.1,
+            "error_margin": "\u00b11.8\u00b0C"
+          }
+        }
+      },
+      "humidity": {
+        "weighted_accuracy": 82.7,
+        "best_case": 88.0,
+        "worst_case": 75.0,
+        "scenarios": {
+          "stable_conditions": {
+            "description": "Stable external humidity, normal transpiration",
+            "accuracy": 85.0,
+            "probability": 0.35,
+            "error_margin": "\u00b15%"
+          },
+          "high_transpiration": {
+            "description": "Peak growing season, high plant activity",
+            "accuracy": 82.0,
+            "probability": 0.25,
+            "error_margin": "\u00b16%"
+          },
+          "low_transpiration": {
+            "description": "Dormant period, minimal plant activity",
+            "accuracy": 88.0,
+            "probability": 0.15,
+            "error_margin": "\u00b14%"
+          },
+          "irrigation_event": {
+            "description": "Recent watering, humidity spike",
+            "accuracy": 75.0,
+            "probability": 0.15,
+            "error_margin": "\u00b18%"
+          },
+          "ventilation_active": {
+            "description": "Windows open, air exchange",
+            "accuracy": 80.0,
+            "probability": 0.1,
+            "error_margin": "\u00b17%"
+          }
+        }
+      },
+      "ai_enhancement": {
+        "weighted_enhancement": 6.43,
+        "best_case": 7.5,
+        "worst_case": 3.0,
+        "scenarios": {
+          "sufficient_context": {
+            "description": "Good historical data, clear patterns",
+            "enhancement": 7.5,
+            "probability": 0.4
+          },
+          "moderate_context": {
+            "description": "Some historical data available",
+            "enhancement": 6.5,
+            "probability": 0.35
+          },
+          "limited_context": {
+            "description": "New user, minimal history",
+            "enhancement": 5.0,
+            "probability": 0.2
+          },
+          "edge_case": {
+            "description": "Unusual conditions, AI uncertainty",
+            "enhancement": 3.0,
+            "probability": 0.05
+          }
+        },
+        "confidence": 95.0
+      },
+      "potential_issues": {
+        "issues": {
+          "external_weather_api_failure": {
+            "description": "Weather API down or rate limited",
+            "impact_on_accuracy": -100,
+            "probability": 0.01,
+            "mitigation": "Fallback to cached data, user input"
+          },
+          "unusual_greenhouse_design": {
+            "description": "Non-standard insulation, ventilation",
+            "impact_on_accuracy": -15,
+            "probability": 0.1,
+            "mitigation": "User calibration, feedback learning"
+          },
+          "extreme_weather_events": {
+            "description": "Heatwave, cold snap, storms",
+            "impact_on_accuracy": -20,
+            "probability": 0.05,
+            "mitigation": "Weather alert integration, safety limits"
+          },
+          "sensor_interference": {
+            "description": "User has actual sensors causing confusion",
+            "impact_on_accuracy": 0,
+            "probability": 0.0,
+            "mitigation": "N/A - sensorless system"
+          },
+          "crop_type_mismatch": {
+            "description": "Wrong crop parameters selected",
+            "impact_on_accuracy": -10,
+            "probability": 0.08,
+            "mitigation": "Crop detection, user verification"
+          },
+          "location_inaccuracy": {
+            "description": "Wrong city/region selected",
+            "impact_on_accuracy": -25,
+            "probability": 0.03,
+            "mitigation": "GPS verification, user confirmation"
+          },
+          "seasonal_transition": {
+            "description": "Spring/Fall unpredictable weather",
+            "impact_on_accuracy": -8,
+            "probability": 0.15,
+            "mitigation": "Seasonal models, increased uncertainty bounds"
+          },
+          "gemini_api_quota_exceeded": {
+            "description": "AI analysis unavailable",
+            "impact_on_accuracy": -6.5,
+            "probability": 0.02,
+            "mitigation": "Fallback to physics-only model"
+          },
+          "user_feedback_gaming": {
+            "description": "Intentionally wrong feedback",
+            "impact_on_accuracy": -5,
+            "probability": 0.01,
+            "mitigation": "Outlier detection, confidence scoring"
+          },
+          "microclimate_variation": {
+            "description": "Hot/cold spots within greenhouse",
+            "impact_on_accuracy": -12,
+            "probability": 0.2,
+            "mitigation": "Multi-point estimation, user guidance"
+          }
+        },
+        "expected_impact": -8.83,
+        "total_issues": 10
+      }
+    }
+  },
+  "visualization_data": {
+    "description": "Unusual conditions, AI uncertainty",
+    "enhancement": 3.0,
+    "probability": 0.05
+  }
+}

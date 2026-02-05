@@ -15,13 +15,13 @@ async def startup_event():
         print(f"⚠️  Database initialization warning: {e}")
 
 
-# CORS configuration
+# CORS configuration - Include all necessary origins
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://forhumanai.net",
     "https://www.forhumanai.net",
-    "*"
+    "https://ai-kappa-five-91.vercel.app",  # Vercel deployment URL
 ]
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -37,6 +37,16 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+# IMPORTANT: Add CORS middleware BEFORE SecurityHeaders to ensure proper CORS handling
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
@@ -48,14 +58,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # API Routers
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])

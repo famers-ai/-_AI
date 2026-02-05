@@ -62,6 +62,41 @@ async def create_log(
         db.commit()
         db.refresh(new_log)
         
+        # --- NEW: AI LEARNING LOOP ---
+        # Analyze if this voice log contains environmental feedback
+        try:
+            from app.services.ai_engine import analyze_environment_feedback
+            from app.core.database import RealityFeedbackLog, VirtualEnvironmentLog
+            
+            feedback_analysis = analyze_environment_feedback(log.text)
+            
+            # If feedback detected with high confidence, save to RealityFeedbackLog
+            if feedback_analysis.get("is_feedback") and feedback_analysis.get("confidence", 0) > 0.7:
+                # Get the most recent AI prediction for this user (if exists)
+                latest_prediction = db.query(VirtualEnvironmentLog).filter(
+                    VirtualEnvironmentLog.user_id == user_id
+                ).order_by(VirtualEnvironmentLog.timestamp.desc()).first()
+                
+                prediction_ref_id = latest_prediction.id if latest_prediction else None
+                
+                # Save feedback to database
+                feedback_log = RealityFeedbackLog(
+                    user_id=user_id,
+                    timestamp=timestamp,
+                    feedback_type=feedback_analysis.get("feedback_type"),
+                    feedback_value=feedback_analysis.get("feedback_value"),
+                    ai_prediction_ref_id=prediction_ref_id
+                )
+                
+                db.add(feedback_log)
+                db.commit()
+                
+                print(f"✅ Feedback saved: {feedback_analysis.get('feedback_type')} - {feedback_analysis.get('feedback_value')}")
+            
+        except Exception as e:
+            # Don't fail the voice log if feedback analysis fails
+            print(f"⚠️ Feedback analysis failed (non-critical): {e}")
+        
         return {
             "id": new_log.id,
             "text": log.text,

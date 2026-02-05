@@ -118,6 +118,63 @@ class DataReminder(Base):
     is_sent = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+# --- New Models for Sensorless AI Learning Loop ---
+
+class ExternalWeatherLog(Base):
+    """Stores external weather conditions from OpenWeatherMap API"""
+    __tablename__ = "external_weather_logs"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    location = Column(String, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    temp_out = Column(Float)  # External Temperature
+    humi_out = Column(Float)  # External Humidity
+    condition = Column(String) # Weather condition (e.g., "Clear", "Rain")
+    wind_speed = Column(Float)
+
+class VirtualEnvironmentLog(Base):
+    """Stores AI-predicted internal environmental data"""
+    __tablename__ = "virtual_environment_logs"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    predicted_temp = Column(Float)
+    predicted_humi = Column(Float)
+    predicted_vpd = Column(Float)
+    model_version = Column(String, default="v1.0") # To track model performance over time
+
+class RealityFeedbackLog(Base):
+    """
+    Stores 'Ground Truth' feedback from users.
+    This is the most critical data for training the AI.
+    Types:
+    - EXACT: User measured with a thermometer (e.g., "It's 24.0°C")
+    - SENSORY: User's feeling (e.g., "Feels Hot", "Feels Dry")
+    - OBSERVATION: Plant obs (e.g., "Leaves wilting")
+    """
+    __tablename__ = "reality_feedback_logs"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    feedback_type = Column(String, nullable=False) # EXACT, SENSORY, OBSERVATION
+    feedback_value = Column(String, nullable=False) # "24.5", "HOT", "WILTING"
+    ai_prediction_ref_id = Column(Integer) # Optional link to what AI predicted at that time
+
+class FarmPhysicsProfile(Base):
+    """
+    Stores the learned physical characteristics of a specific farm.
+    AI updates these parameters based on RealityFeedbackLog.
+    """
+    __tablename__ = "farm_physics_profiles"
+    
+    user_id = Column(String, primary_key=True) # One profile per user
+    insulation_score = Column(Float, default=0.5) # 0.0 (Tent) ~ 1.0 (Bunker)
+    moisture_retention = Column(Float, default=0.5) # How long humidity stays
+    thermal_lag = Column(Float, default=1.0) # Hours delay for temp changes
+    last_updated = Column(DateTime, default=datetime.utcnow)
+
 # Dependency to get DB session
 def get_db():
     db = SessionLocal()
